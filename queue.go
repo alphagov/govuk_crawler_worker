@@ -25,3 +25,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		Channel: channel,
 	}, nil
 }
+
+func (c *QueueConnection) Close() error {
+	return c.Connection.Close()
+}

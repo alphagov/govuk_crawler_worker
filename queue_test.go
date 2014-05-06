@@ -25,9 +25,17 @@ var _ = Describe("Queue", func() {
 			connection, connectionErr = NewQueueConnection("amqp://guest:guest@localhost:5672/")
 		})
 
+		AfterEach(func() {
+			defer connection.Close()
+		})
+
 		It("successfully connects to an AMQP service", func() {
 			Expect(connectionErr).To(BeNil())
 			Expect(connection).ToNot(BeNil())
+		})
+
+		It("can close the connection without errors", func() {
+			Expect(connection.Close()).To(BeNil())
 		})
 	})
 })
