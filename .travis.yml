@@ -13,3 +13,6 @@ before_script:
   - go install -v ./...
 
 script: go test -v ./...
+
+notifications:
+  email: false
