@@ -5,6 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/streadway/amqp"
 )
 
 var _ = Describe("Queue", func() {
@@ -47,6 +49,24 @@ var _ = Describe("Queue", func() {
 
 			err = connection.Channel.ExchangeDelete(exchange, false, true)
 			Expect(err).To(BeNil())
+		})
+
+		It("can declare a queue", func() {
+			var (
+				err   error
+				queue amqp.Queue
+				name = "some-queue"
+			)
+
+			queue, err = connection.QueueDeclare(name)
+
+			Expect(err).To(BeNil())
+			Expect(queue.Name).To(Equal(name))
+
+			deleted, err := connection.Channel.QueueDelete(name, false, false, true)
+
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
 		})
 	})
 })
