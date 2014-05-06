@@ -5,11 +5,15 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/fzzy/radix/redis"
 )
 
 var _ = Describe("TTLHashSet", func() {
+	prefix := "govuk_mirror_crawler_test"
+
 	It("returns an error when asking for a TTLHashSet object that can't connect to redis", func() {
-		ttlHashSet, err := NewTTLHashSet("govuk_mirror_crawler", "127.0.0.1:20000")
+		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000")
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
@@ -22,11 +26,12 @@ var _ = Describe("TTLHashSet", func() {
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet("govuk_mirror_crawler", "127.0.0.1:6379")
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, "127.0.0.1:6379")
 		})
 
 		AfterEach(func() {
 			Expect(ttlHashSet.Close()).To(BeNil())
+			Expect(purgeAllKeys(prefix, "127.0.0.1:6379"))
 		})
 
 		It("should connect successfully with no errors", func() {
@@ -77,3 +82,22 @@ var _ = Describe("TTLHashSet", func() {
 		})
 	})
 })
+
+func purgeAllKeys(prefix string, address string) error {
+	client, err := redis.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	keys, err := client.Cmd("KEYS", prefix + "*").List()
+	if err != nil {
+		return err
+	}
+
+	reply := client.Cmd("DEL", keys)
+	if reply.Err != nil {
+		return reply.Err
+	}
+
+	return nil
+}
