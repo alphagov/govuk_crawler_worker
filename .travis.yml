@@ -7,4 +7,6 @@ go:
 services:
   - redis-server
 
+install: go get -v ./...
+
 script: go test -v ./...
