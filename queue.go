@@ -29,3 +29,15 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 func (c *QueueConnection) Close() error {
 	return c.Connection.Close()
 }
+
+func (c *QueueConnection) ExchangeDeclare(exchangeName string, exchangeType string) error {
+	return c.Channel.ExchangeDeclare(
+		exchangeName, // name of the exchange
+		exchangeType, // type
+		true,         // durable
+		false,        // delete when complete
+		false,        // internal
+		false,        // noWait
+		nil,          // arguments
+	)
+}

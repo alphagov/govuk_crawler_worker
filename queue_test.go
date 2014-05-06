@@ -37,5 +37,16 @@ var _ = Describe("Queue", func() {
 		It("can close the connection without errors", func() {
 			Expect(connection.Close()).To(BeNil())
 		})
+
+		It("can declare an exchange", func() {
+			var err error
+			exchange := "some-exchange"
+
+			err = connection.ExchangeDeclare(exchange, "direct")
+			Expect(err).To(BeNil())
+
+			err = connection.Channel.ExchangeDelete(exchange, false, true)
+			Expect(err).To(BeNil())
+		})
 	})
 })
