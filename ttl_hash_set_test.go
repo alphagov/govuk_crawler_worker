@@ -33,5 +33,12 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(ttlHashSetErr).To(BeNil())
 			Expect(ttlHashSet).NotTo(BeNil())
 		})
+
+		It("should return false when a key doesn't exist", func() {
+			exists, err := ttlHashSet.Exists("foobar")
+
+			Expect(err).To(BeNil())
+			Expect(exists).To(Equal(false))
+		})
 	})
 })

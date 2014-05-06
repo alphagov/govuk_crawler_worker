@@ -24,3 +24,12 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 func (t *TTLHashSet) Close() error {
 	return t.client.Close()
 }
+
+func (t *TTLHashSet) Exists(key string) (bool, error) {
+	localKey := prefixKey(t.prefix, key)
+	return t.client.Cmd("EXISTS", localKey).Bool()
+}
+
+func prefixKey(prefix string, key string) string {
+	return prefix + ":" + key
+}
