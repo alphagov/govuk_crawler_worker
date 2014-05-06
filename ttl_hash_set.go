@@ -35,6 +35,11 @@ func (t *TTLHashSet) Exists(key string) (bool, error) {
 	return t.client.Cmd("EXISTS", localKey).Bool()
 }
 
+func (t *TTLHashSet) TTL(key string) (int, error) {
+	localKey := prefixKey(t.prefix, key)
+	return t.client.Cmd("TTL", localKey).Int()
+}
+
 func prefixKey(prefix string, key string) string {
 	return prefix + ":" + key
 }

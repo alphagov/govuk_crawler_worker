@@ -53,5 +53,14 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(existsErr).To(BeNil())
 			Expect(exists).To(Equal(true))
 		})
+
+		Describe("TTL()", func() {
+			It("should return a negative TTL on a non-existent key", func() {
+				ttl, err := ttlHashSet.TTL("this.key.does.not.exist")
+
+				Expect(err).To(BeNil())
+				Expect(ttl).To(Equal(-2))
+			})
+		})
 	})
 })
