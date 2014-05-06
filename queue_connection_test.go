@@ -9,7 +9,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var _ = Describe("Queue", func() {
+var _ = Describe("QueueConnection", func() {
 	It("fails if it can't connect to an AMQP server", func() {
 		connection, err := NewQueueConnection("amqp://guest:guest@localhost:50000/")
 
