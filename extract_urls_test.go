@@ -23,7 +23,7 @@ var _ = Describe("ExtractURLs", func() {
 		urls, err := ExtractURLs(buffer)
 
 		Expect(err).To(BeNil())
-		Expect(urls).To(Equal([]string{"https://www.foo.com/"}))
+		Expect(urls).To(ContainElement("https://www.foo.com/"))
 	})
 
 	It("should extract all img[@src] URLs from a given HTML document", func() {
@@ -31,7 +31,7 @@ var _ = Describe("ExtractURLs", func() {
 		urls, err := ExtractURLs(buffer)
 
 		Expect(err).To(BeNil())
-		Expect(urls).To(Equal([]string{"https://www.foo.com/image.png"}))
+		Expect(urls).To(ContainElement("https://www.foo.com/image.png"))
 	})
 
 	It("should extract all link[@href] URLs from a given HTML document", func() {
@@ -39,7 +39,7 @@ var _ = Describe("ExtractURLs", func() {
 		urls, err := ExtractURLs(buffer)
 
 		Expect(err).To(BeNil())
-		Expect(urls).To(Equal([]string{"favicon.ico"}))
+		Expect(urls).To(ContainElement("favicon.ico"))
 	})
 
 	It("should extract all script[@src] URLs from a given HTML document", func() {
@@ -48,6 +48,19 @@ var _ = Describe("ExtractURLs", func() {
 		urls, err := ExtractURLs(buffer)
 
 		Expect(err).To(BeNil())
-		Expect(urls).To(Equal([]string{"https://www.foo/com/jq.js"}))
+		Expect(urls).To(ContainElement("https://www.foo/com/jq.js"))
+	})
+
+	It("successfully extracts multiple matching URLs from the provided DOM", func() {
+		buffer := bytes.NewBufferString(
+			`<head>
+<script type="text/javascript" src="https://www.foo/com/jq.js"></script>
+<link rel="icon" href="favicon.ico">
+</head>`)
+		urls, err := ExtractURLs(buffer)
+
+		Expect(err).To(BeNil())
+		Expect(urls).To(ContainElement("https://www.foo/com/jq.js"))
+		Expect(urls).To(ContainElement("favicon.ico"))
 	})
 })
