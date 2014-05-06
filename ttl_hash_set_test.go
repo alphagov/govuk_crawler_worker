@@ -61,6 +61,19 @@ var _ = Describe("TTLHashSet", func() {
 				Expect(err).To(BeNil())
 				Expect(ttl).To(Equal(-2))
 			})
+
+			It("should expose a positive TTL on key that exists", func() {
+				key := "some.ttl.key"
+				added, addErr := ttlHashSet.Add(key)
+
+				Expect(addErr).To(BeNil())
+				Expect(added).To(Equal(true))
+
+				ttl, err := ttlHashSet.TTL(key)
+
+				Expect(err).To(BeNil())
+				Expect(ttl).To(BeNumerically(">", 1000))
+			})
 		})
 	})
 })

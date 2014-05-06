@@ -1,6 +1,8 @@
 package govuk_crawler_worker
 
 import (
+	"time"
+
 	"github.com/fzzy/radix/redis"
 )
 
@@ -23,7 +25,12 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 
 func (t *TTLHashSet) Add(key string) (bool, error) {
 	localKey := prefixKey(t.prefix, key)
-	return t.client.Cmd("SET", localKey, 1).Bool()
+
+	// Use pipelining to set the key and set expiry in one go.
+	t.client.Append("SET", localKey, 1)
+	t.client.Append("EXPIRE", localKey, (5 * time.Hour).Seconds())
+
+	return t.client.GetReply().Bool()
 }
 
 func (t *TTLHashSet) Close() error {
