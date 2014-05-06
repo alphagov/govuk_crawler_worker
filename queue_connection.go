@@ -22,7 +22,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 
 	return &QueueConnection{
 		Connection: connection,
-		Channel: channel,
+		Channel:    channel,
 	}, nil
 }
 
@@ -33,6 +33,17 @@ func (c *QueueConnection) Close() error {
 	}
 
 	return c.Connection.Close()
+}
+
+func (c *QueueConnection) Consume(queueName string) (<-chan amqp.Delivery, error) {
+	return c.Channel.Consume(
+		queueName,
+		"",
+		false, // autoAck
+		false, // this won't be the sole consumer
+		true,  // don't deliver messages from same connection
+		false, // the broker owns when consumption can begin
+		nil)   // arguments
 }
 
 func (c *QueueConnection) ExchangeDeclare(exchangeName string, exchangeType string) error {
@@ -67,8 +78,24 @@ func (c *QueueConnection) QueueDeclare(queueName string) (amqp.Queue, error) {
 func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName string) error {
 	return c.Channel.QueueBind(
 		queueName,
-		"#",  // key to marshall with
+		"#", // key to marshall with
 		exchangeName,
 		true, // noWait
 		nil)  // arguments
+}
+
+func (c *QueueConnection) Publish(exchangeName string, routingKey string, contentType string, body string) error {
+	return c.Channel.Publish(
+		exchangeName, // publish to an exchange
+		routingKey,   // routing to 0 or more queues
+		false,        // mandatory
+		false,        // immediate
+		amqp.Publishing{
+			Headers:         amqp.Table{},
+			ContentType:     contentType,
+			ContentEncoding: "",
+			Body:            []byte(body),
+			DeliveryMode:    amqp.Persistent,
+			Priority:        0, // 0-9
+		})
 }

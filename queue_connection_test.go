@@ -55,7 +55,7 @@ var _ = Describe("QueueConnection", func() {
 			var (
 				err   error
 				queue amqp.Queue
-				name = "some-queue"
+				name  = "some-queue"
 			)
 
 			queue, err = connection.QueueDeclare(name)
@@ -88,6 +88,61 @@ var _ = Describe("QueueConnection", func() {
 
 			err = connection.Channel.ExchangeDelete(exchangeName, false, true)
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("working with messages on the queue", func() {
+		var (
+			publisher *QueueConnection
+			consumer  *QueueConnection
+			err       error
+		)
+
+		exchangeName := "test-crawler-exchange"
+		queueName := "test-crawler-queue"
+
+		BeforeEach(func() {
+			publisher, err = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+			Expect(err).To(BeNil())
+			Expect(publisher).ToNot(BeNil())
+
+			consumer, err = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+			Expect(err).To(BeNil())
+			Expect(consumer).ToNot(BeNil())
+		})
+
+		AfterEach(func() {
+			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, true)
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
+
+			err = consumer.Channel.ExchangeDelete(exchangeName, false, true)
+			Expect(err).To(BeNil())
+
+			Expect(publisher.Close()).To(BeNil())
+			Expect(consumer.Close()).To(BeNil())
+		})
+
+		It("should consume and publish messages onto the provided queue and exchange", func() {
+			err = consumer.ExchangeDeclare(exchangeName, "direct")
+			Expect(err).To(BeNil())
+
+			_, err = consumer.QueueDeclare(queueName)
+			Expect(err).To(BeNil())
+
+			err = consumer.BindQueueToExchange(queueName, exchangeName)
+			Expect(err).To(BeNil())
+
+			deliveries, err := consumer.Consume(queueName)
+			Expect(err).To(BeNil())
+
+			err = publisher.Publish(exchangeName, "#", "text/plain", "foo")
+			Expect(err).To(BeNil())
+
+			for d := range deliveries {
+				Expect(string(d.Body)).To(Equal("foo"))
+				break
+			}
 		})
 	})
 })
