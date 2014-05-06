@@ -63,3 +63,12 @@ func (c *QueueConnection) QueueDeclare(queueName string) (amqp.Queue, error) {
 
 	return queue, nil
 }
+
+func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName string) error {
+	return c.Channel.QueueBind(
+		queueName,
+		"#",  // key to marshall with
+		exchangeName,
+		true, // noWait
+		nil)  // arguments
+}

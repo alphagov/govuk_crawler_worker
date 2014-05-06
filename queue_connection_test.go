@@ -59,14 +59,35 @@ var _ = Describe("QueueConnection", func() {
 			)
 
 			queue, err = connection.QueueDeclare(name)
-
 			Expect(err).To(BeNil())
 			Expect(queue.Name).To(Equal(name))
 
 			deleted, err := connection.Channel.QueueDelete(name, false, false, true)
-
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
+		})
+
+		It("can bind a queue to an exchange", func() {
+			var err error
+
+			exchangeName := "some-binding-exchange"
+			queueName := "some-binding-queue"
+
+			err = connection.ExchangeDeclare(exchangeName, "direct")
+			Expect(err).To(BeNil())
+
+			_, err = connection.QueueDeclare(queueName)
+			Expect(err).To(BeNil())
+
+			err = connection.BindQueueToExchange(queueName, exchangeName)
+			Expect(err).To(BeNil())
+
+			deleted, err := connection.Channel.QueueDelete(queueName, false, false, true)
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
+
+			err = connection.Channel.ExchangeDelete(exchangeName, false, true)
+			Expect(err).To(BeNil())
 		})
 	})
 })
