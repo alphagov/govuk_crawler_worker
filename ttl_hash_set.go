@@ -20,3 +20,7 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 		prefix: prefix,
 	}, nil
 }
+
+func (t *TTLHashSet) Close() error {
+	return t.client.Close()
+}

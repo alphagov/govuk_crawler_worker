@@ -14,4 +14,24 @@ var _ = Describe("TTLHashSet", func() {
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
 	})
+
+	Describe("Working with a redis service", func() {
+		var (
+			ttlHashSet    *TTLHashSet
+			ttlHashSetErr error
+		)
+
+		BeforeEach(func() {
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet("govuk_mirror_crawler", "127.0.0.1:6379")
+		})
+
+		AfterEach(func() {
+			Expect(ttlHashSet.Close()).To(BeNil())
+		})
+
+		It("should connect successfully with no errors", func() {
+			Expect(ttlHashSetErr).To(BeNil())
+			Expect(ttlHashSet).NotTo(BeNil())
+		})
+	})
 })
