@@ -40,5 +40,18 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err).To(BeNil())
 			Expect(exists).To(Equal(false))
 		})
+
+		It("exposes a way of adding a key to redis", func() {
+			key := "foo.bar.baz"
+			added, addedErr := ttlHashSet.Add(key)
+
+			Expect(addedErr).To(BeNil())
+			Expect(added).To(Equal(true))
+
+			exists, existsErr := ttlHashSet.Exists(key)
+
+			Expect(existsErr).To(BeNil())
+			Expect(exists).To(Equal(true))
+		})
 	})
 })

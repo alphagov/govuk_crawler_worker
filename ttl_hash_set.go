@@ -21,6 +21,11 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 	}, nil
 }
 
+func (t *TTLHashSet) Add(key string) (bool, error) {
+	localKey := prefixKey(t.prefix, key)
+	return t.client.Cmd("SET", localKey, 1).Bool()
+}
+
 func (t *TTLHashSet) Close() error {
 	return t.client.Close()
 }
