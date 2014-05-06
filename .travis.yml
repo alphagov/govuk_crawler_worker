@@ -5,6 +5,7 @@ go:
   - 1.2
 
 services:
+  - rabbitmq
   - redis-server
 
 install: go get -v ./...
