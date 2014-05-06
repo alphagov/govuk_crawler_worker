@@ -14,4 +14,20 @@ var _ = Describe("Queue", func() {
 		Expect(err).ToNot(BeNil())
 		Expect(connection).To(BeNil())
 	})
+
+	Describe("Connecting to a running AMQP service", func() {
+		var (
+			connection    *QueueConnection
+			connectionErr error
+		)
+
+		BeforeEach(func() {
+			connection, connectionErr = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+		})
+
+		It("successfully connects to an AMQP service", func() {
+			Expect(connectionErr).To(BeNil())
+			Expect(connection).ToNot(BeNil())
+		})
+	})
 })
