@@ -47,17 +47,17 @@ func (c *QueueConnection) ExchangeDeclare(exchangeName string, exchangeType stri
 	)
 }
 
-func (c *QueueConnection) QueueDeclare(name string) (amqp.Queue, error) {
+func (c *QueueConnection) QueueDeclare(queueName string) (amqp.Queue, error) {
 	queue, err := c.Channel.QueueDeclare(
-		name,  // name of the queue
-		true,  // durable
-		false, // delete when usused
-		false, // exclusive
-		false, // noWait
-		nil)   // arguments
+		queueName, // name of the queue
+		true,      // durable
+		false,     // delete when usused
+		false,     // exclusive
+		false,     // noWait
+		nil)       // arguments
 	if err != nil {
 		return amqp.Queue{
-			Name: name,
+			Name: queueName,
 		}, err
 	}
 
