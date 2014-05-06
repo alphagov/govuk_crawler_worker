@@ -27,6 +27,11 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 }
 
 func (c *QueueConnection) Close() error {
+	err := c.Channel.Close()
+	if err != nil {
+		return err
+	}
+
 	return c.Connection.Close()
 }
 
@@ -49,7 +54,7 @@ func (c *QueueConnection) QueueDeclare(name string) (amqp.Queue, error) {
 		false, // delete when usused
 		false, // exclusive
 		false, // noWait
-		map[string]string{"": ""})
+		nil)   // arguments
 	if err != nil {
 		return amqp.Queue{
 			Name: name,
