@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestTtlHashSet(t *testing.T) {
+func TestTTLHashSet(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "TtlHashSet Suite")
+	RunSpecs(t, "TTLHashSet Suite")
 }
