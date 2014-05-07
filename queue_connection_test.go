@@ -136,7 +136,15 @@ var _ = Describe("QueueConnection", func() {
 			deliveries, err := consumer.Consume(queueName)
 			Expect(err).To(BeNil())
 
-			err = publisher.Publish(exchangeName, "#", "text/plain", "foo")
+			err = publisher.Publish(exchangeName, "#", "text/plain", "foo",
+				func(ack chan uint64, nack chan uint64) {
+					select {
+					case tag := <-ack:
+						Expect(tag).To(Equal(uint64(1)))
+					case tag := <-nack:
+						Expect(tag).ToNot(HaveOccurred())
+					}
+				})
 			Expect(err).To(BeNil())
 
 			for d := range deliveries {
