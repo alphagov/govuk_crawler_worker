@@ -26,7 +26,7 @@ var _ = Describe("Crawl", func() {
 	)
 
 	BeforeEach(func() {
-		crawler, crawlerErr = NewCrawler("127.0.0.1")
+		crawler, crawlerErr = NewCrawler("http://127.0.0.1/")
 
 		Expect(crawlerErr).To(BeNil())
 		Expect(crawler).ToNot(BeNil())
@@ -68,6 +68,13 @@ var _ = Describe("Crawl", func() {
 
 			Expect(err).To(BeNil())
 			Expect(strings.TrimSpace(string(body))).To(Equal("Hello world"))
+		})
+
+		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
+			body, err := crawler.Crawl("http://google.com/foo")
+
+			Expect(err).To(Equal(CannotCrawlNonLocalHosts))
+			Expect(body).To(Equal([]byte{}))
 		})
 
 		Describe("returning a retry error", func() {

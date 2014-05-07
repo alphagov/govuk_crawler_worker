@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -50,8 +51,17 @@ func NewCrawler(rootURL string) (*Crawler, error) {
 	}, nil
 }
 
-func (c *Crawler) Crawl(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
+	u, err := url.Parse(crawlURL)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	if !strings.HasPrefix(u.Host, c.RootURL.Host) {
+		return []byte{}, CannotCrawlNonLocalHosts
+	}
+
+	resp, err := http.Get(crawlURL)
 	if err != nil {
 		return []byte{}, err
 	}
