@@ -141,6 +141,7 @@ var _ = Describe("QueueConnection", func() {
 
 			for d := range deliveries {
 				Expect(string(d.Body)).To(Equal("foo"))
+				d.Ack(false)
 				break
 			}
 		})
