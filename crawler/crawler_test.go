@@ -1,4 +1,4 @@
-package govuk_crawler_worker_test
+package crawler_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	. "github.com/alphagov/govuk_crawler_worker"
+	. "github.com/alphagov/govuk_crawler_worker/crawler"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

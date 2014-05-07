@@ -1,4 +1,4 @@
-package main_test
+package crawler_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGovukCrawlerWorker(t *testing.T) {
+func TestCrawler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GovukCrawlerWorker Suite")
+	RunSpecs(t, "Crawler Suite")
 }

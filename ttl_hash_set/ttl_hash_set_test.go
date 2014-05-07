@@ -1,7 +1,7 @@
-package govuk_crawler_worker_test
+package ttl_hash_set_test
 
 import (
-	. "github.com/alphagov/govuk_crawler_worker"
+	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

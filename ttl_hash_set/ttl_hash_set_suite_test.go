@@ -1,4 +1,4 @@
-package main_test
+package ttl_hash_set_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGovukCrawlerWorker(t *testing.T) {
+func TestTtlHashSet(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GovukCrawlerWorker Suite")
+	RunSpecs(t, "TtlHashSet Suite")
 }

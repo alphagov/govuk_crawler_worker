@@ -1,4 +1,4 @@
-package main_test
+package queue_connection_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGovukCrawlerWorker(t *testing.T) {
+func TestQueueConnection(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GovukCrawlerWorker Suite")
+	RunSpecs(t, "QueueConnection Suite")
 }

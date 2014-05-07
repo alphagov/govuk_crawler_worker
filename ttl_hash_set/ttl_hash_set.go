@@ -1,4 +1,4 @@
-package govuk_crawler_worker
+package ttl_hash_set
 
 import (
 	"time"

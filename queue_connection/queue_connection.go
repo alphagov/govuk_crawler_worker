@@ -1,4 +1,4 @@
-package govuk_crawler_worker
+package queue_connection
 
 import (
 	"github.com/streadway/amqp"

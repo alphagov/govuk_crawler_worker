@@ -1,4 +1,4 @@
-package govuk_crawler_worker
+package crawler
 
 import (
 	"errors"
