@@ -89,7 +89,7 @@ func purgeAllKeys(prefix string, address string) error {
 		return err
 	}
 
-	keys, err := client.Cmd("KEYS", prefix + "*").List()
+	keys, err := client.Cmd("KEYS", prefix+"*").List()
 	if err != nil {
 		return err
 	}
