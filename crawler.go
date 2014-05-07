@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	CannotCrawlNonLocalHosts error = errors.New("Cannot crawl URLs that don't match the provided host")
-	RetryRequestError        error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
+	CannotCrawlURL    error = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	RetryRequestError error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
 
 	statusCodes []int
 	once        sync.Once
@@ -58,7 +58,7 @@ func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
 	}
 
 	if !strings.HasPrefix(u.Host, c.RootURL.Host) {
-		return []byte{}, CannotCrawlNonLocalHosts
+		return []byte{}, CannotCrawlURL
 	}
 
 	resp, err := http.Get(crawlURL)

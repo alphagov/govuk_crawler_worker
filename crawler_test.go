@@ -73,7 +73,7 @@ var _ = Describe("Crawl", func() {
 		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
 			body, err := crawler.Crawl("http://google.com/foo")
 
-			Expect(err).To(Equal(CannotCrawlNonLocalHosts))
+			Expect(err).To(Equal(CannotCrawlURL))
 			Expect(body).To(Equal([]byte{}))
 		})
 
