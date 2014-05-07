@@ -20,6 +20,18 @@ func testServer(status int, body string) *httptest.Server {
 }
 
 var _ = Describe("Crawl", func() {
+	var (
+		crawler    *Crawler
+		crawlerErr error
+	)
+
+	BeforeEach(func() {
+		crawler, crawlerErr = NewCrawler("127.0.0.1")
+
+		Expect(crawlerErr).To(BeNil())
+		Expect(crawler).ToNot(BeNil())
+	})
+
 	Describe("RetryStatusCodes", func() {
 		It("should return a fixed int array with values 429, 500..599", func() {
 			statusCodes := RetryStatusCodes()
@@ -31,45 +43,63 @@ var _ = Describe("Crawl", func() {
 		})
 	})
 
-	It("returns a body with no errors for 200 OK responses", func() {
-		ts := testServer(http.StatusOK, "Hello world")
-		defer ts.Close()
+	Describe("NewCrawler()", func() {
+		It("doesn't allow providing empty URLs", func() {
+			badCrawler, err := NewCrawler("")
 
-		body, err := Crawl(ts.URL)
+			Expect(err).ToNot(BeNil())
+			Expect(badCrawler).To(BeNil())
+		})
 
-		Expect(err).To(BeNil())
-		Expect(strings.TrimSpace(string(body))).To(Equal("Hello world"))
+		It("provides a new crawler that accepts the provided host", func() {
+			GOVUKCrawler, err := NewCrawler("https://www.gov.uk/")
+
+			Expect(err).To(BeNil())
+			Expect(GOVUKCrawler.Host).To(Equal("www.gov.uk"))
+		})
 	})
 
-	Describe("returning a retry error", func() {
-		It("returns a retry error if we get a response code of Too Many Requests", func() {
-			ts := testServer(429, "Too Many Requests")
+	Describe("Crawler.Crawl()", func() {
+		It("returns a body with no errors for 200 OK responses", func() {
+			ts := testServer(http.StatusOK, "Hello world")
 			defer ts.Close()
 
-			body, err := Crawl(ts.URL)
+			body, err := crawler.Crawl(ts.URL)
 
-			Expect(err).To(Equal(RetryRequestError))
-			Expect(body).To(Equal([]byte{}))
+			Expect(err).To(BeNil())
+			Expect(strings.TrimSpace(string(body))).To(Equal("Hello world"))
 		})
 
-		It("returns a retry error if we get a response code of Internal Server Error", func() {
-			ts := testServer(http.StatusInternalServerError, "Internal Server Error")
-			defer ts.Close()
+		Describe("returning a retry error", func() {
+			It("returns a retry error if we get a response code of Too Many Requests", func() {
+				ts := testServer(429, "Too Many Requests")
+				defer ts.Close()
 
-			body, err := Crawl(ts.URL)
+				body, err := crawler.Crawl(ts.URL)
 
-			Expect(err).To(Equal(RetryRequestError))
-			Expect(body).To(Equal([]byte{}))
-		})
+				Expect(err).To(Equal(RetryRequestError))
+				Expect(body).To(Equal([]byte{}))
+			})
 
-		It("returns a retry error if we get a response code of Gateway Timeout", func() {
-			ts := testServer(http.StatusGatewayTimeout, "Gateway Timeout")
-			defer ts.Close()
+			It("returns a retry error if we get a response code of Internal Server Error", func() {
+				ts := testServer(http.StatusInternalServerError, "Internal Server Error")
+				defer ts.Close()
 
-			body, err := Crawl(ts.URL)
+				body, err := crawler.Crawl(ts.URL)
 
-			Expect(err).To(Equal(RetryRequestError))
-			Expect(body).To(Equal([]byte{}))
+				Expect(err).To(Equal(RetryRequestError))
+				Expect(body).To(Equal([]byte{}))
+			})
+
+			It("returns a retry error if we get a response code of Gateway Timeout", func() {
+				ts := testServer(http.StatusGatewayTimeout, "Gateway Timeout")
+				defer ts.Close()
+
+				body, err := crawler.Crawl(ts.URL)
+
+				Expect(err).To(Equal(RetryRequestError))
+				Expect(body).To(Equal([]byte{}))
+			})
 		})
 	})
 })

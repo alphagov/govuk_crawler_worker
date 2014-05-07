@@ -4,15 +4,21 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 )
 
 var (
-	RetryRequestError error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
+	CannotCrawlNonLocalHosts error = errors.New("Cannot crawl URLs that don't match the provided host")
+	RetryRequestError        error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
 
 	statusCodes []int
 	once        sync.Once
 )
+
+type Crawler struct {
+	Host string
+}
 
 func RetryStatusCodes() []int {
 	// This is go's equivalent of memoization/macro expansion. It's
@@ -29,7 +35,22 @@ func RetryStatusCodes() []int {
 	return statusCodes
 }
 
-func Crawl(url string) ([]byte, error) {
+func NewCrawler(host string) (*Crawler, error) {
+	if host == "" {
+		return nil, errors.New("Cannot provide an empty root URL")
+	}
+
+	u, err := url.Parse(host)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Crawler{
+		Host: u.Host,
+	}, nil
+}
+
+func (c *Crawler) Crawl(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return []byte{}, err
