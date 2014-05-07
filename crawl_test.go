@@ -55,7 +55,7 @@ var _ = Describe("Crawl", func() {
 			GOVUKCrawler, err := NewCrawler("https://www.gov.uk/")
 
 			Expect(err).To(BeNil())
-			Expect(GOVUKCrawler.Host).To(Equal("www.gov.uk"))
+			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
 		})
 	})
 

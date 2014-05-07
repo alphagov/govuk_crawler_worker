@@ -17,7 +17,7 @@ var (
 )
 
 type Crawler struct {
-	Host string
+	RootURL *url.URL
 }
 
 func RetryStatusCodes() []int {
@@ -35,18 +35,18 @@ func RetryStatusCodes() []int {
 	return statusCodes
 }
 
-func NewCrawler(host string) (*Crawler, error) {
-	if host == "" {
+func NewCrawler(rootURL string) (*Crawler, error) {
+	if rootURL == "" {
 		return nil, errors.New("Cannot provide an empty root URL")
 	}
 
-	u, err := url.Parse(host)
+	u, err := url.Parse(rootURL)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Crawler{
-		Host: u.Host,
+		RootURL: u,
 	}, nil
 }
 
