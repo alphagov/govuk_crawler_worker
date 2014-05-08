@@ -1,4 +1,4 @@
-package queue_connection
+package queue
 
 import (
 	"github.com/streadway/amqp"

@@ -1,4 +1,4 @@
-package queue_connection_test
+package queue_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestQueueConnection(t *testing.T) {
+func TestQueue(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "QueueConnection Suite")
+	RunSpecs(t, "Queue Suite")
 }

@@ -1,7 +1,7 @@
-package queue_connection_test
+package queue_test
 
 import (
-	. "github.com/alphagov/govuk_crawler_worker/queue_connection"
+	. "github.com/alphagov/govuk_crawler_worker/queue"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
