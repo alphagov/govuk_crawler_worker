@@ -7,6 +7,9 @@ import (
 type QueueConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
+
+	ack  chan uint64
+	nack chan uint64
 }
 
 func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
@@ -20,9 +23,18 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		return nil, err
 	}
 
+	err = channel.Confirm(false)
+	if err != nil {
+		return nil, err
+	}
+
+	ack, nack := channel.NotifyConfirm(make(chan uint64, 1), make(chan uint64, 1))
+
 	return &QueueConnection{
 		Connection: connection,
 		Channel:    channel,
+		ack:        ack,
+		nack:       nack,
 	}, nil
 }
 
@@ -86,13 +98,7 @@ func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName str
 
 func (c *QueueConnection) Publish(exchangeName string, routingKey string, contentType string, body string,
 	ackFunction func(ack chan uint64, nack chan uint64)) error {
-	err := c.Channel.Confirm(false)
-	if err != nil {
-		return err
-	}
-
-	ack, nack := c.Channel.NotifyConfirm(make(chan uint64, 1), make(chan uint64, 1))
-	defer ackFunction(ack, nack)
+	defer ackFunction(c.ack, c.nack)
 
 	return c.Channel.Publish(
 		exchangeName, // publish to an exchange
