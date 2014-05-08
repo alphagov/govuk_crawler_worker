@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"runtime"
+
+	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 )
 
 var (
@@ -24,6 +26,13 @@ func main() {
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
 	log.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
+
+	log.Println("Connecting to redis address:", redisAddr, "with prefix:", redisKeyPrefix)
+	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Connected to redis:", ttlHashSet)
 
 	log.Fatal("Nothing to see here yet.")
 }
