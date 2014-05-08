@@ -21,3 +21,6 @@ _testmain.go
 
 *.exe
 *.test
+
+# Project-specific
+govuk_crawler_worker
