@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 )
 
@@ -27,12 +28,19 @@ func main() {
 	}
 	log.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
 
-	log.Println("Connecting to redis address:", redisAddr, "with prefix:", redisKeyPrefix)
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Connected to redis:", ttlHashSet)
+	defer ttlHashSet.Close()
+	log.Println("Connected to Redis service:", ttlHashSet)
+
+	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer queueManager.Close()
+	log.Println("Connected to AMQP service:", queueManager)
 
 	log.Fatal("Nothing to see here yet.")
 }
