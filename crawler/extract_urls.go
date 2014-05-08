@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -36,14 +37,16 @@ func findByElementAttribute(document *goquery.Document, host string, element str
 
 	document.Find(element).Each(func(_ int, element *goquery.Selection) {
 		href, exists := element.Attr(attr)
+		unescapedHref, _ := url.QueryUnescape(href)
+		trimmedHref := strings.TrimSpace(unescapedHref)
 
-		u, err := url.Parse(href)
+		u, err := url.Parse(trimmedHref)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if exists && u.Host == host {
-			urls = append(urls, href)
+			urls = append(urls, trimmedHref)
 		}
 	})
 

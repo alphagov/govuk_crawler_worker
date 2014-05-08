@@ -72,4 +72,12 @@ var _ = Describe("ExtractURLs", func() {
 		Expect(err).To(BeNil())
 		Expect(urls).To(BeEmpty())
 	})
+
+	It("will unescape URLs", func() {
+		buffer := bytes.NewBufferString(`<div><a href="http://www.foo.com/bar%20"></a></div>`)
+		urls, err := ExtractURLs(buffer, "www.foo.com")
+
+		Expect(err).To(BeNil())
+		Expect(urls).To(ContainElement("http://www.foo.com/bar"))
+	})
 })
