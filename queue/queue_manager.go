@@ -1,5 +1,9 @@
 package queue
 
+import (
+	"github.com/streadway/amqp"
+)
+
 type QueueManager struct {
 	ExchangeName string
 	QueueName    string
@@ -39,6 +43,24 @@ func (h *QueueManager) Close() error {
 	}
 
 	return h.Consumer.Close()
+}
+
+func (h *QueueManager) Consume() (<-chan amqp.Delivery, error) {
+	return h.Consumer.Consume(h.QueueName)
+}
+
+func (h *QueueManager) Publish(
+	routingKey string,
+	contentType string,
+	body string,
+	ackFunction func(ack chan uint64, nack chan uint64)) error {
+
+	return h.Producer.Publish(
+		h.ExchangeName,
+		routingKey,
+		contentType,
+		body,
+		ackFunction)
 }
 
 func setupExchangeAndQueue(connection *QueueConnection, exchangeName string, queueName string) error {

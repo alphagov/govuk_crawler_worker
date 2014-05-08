@@ -37,4 +37,56 @@ var _ = Describe("QueueManager", func() {
 
 		Expect(queueManager.Close()).To(BeNil())
 	})
+
+	Describe("working with an AMQP service", func() {
+		var (
+			queueManager    *QueueManager
+			queueManagerErr error
+		)
+
+		exchangeName, queueName := "test-handler-exchange", "test-handler-queue"
+
+		BeforeEach(func() {
+			queueManager, queueManagerErr = NewQueueManager(
+				"amqp://guest:guest@localhost:5672/",
+				exchangeName,
+				queueName)
+
+			Expect(queueManagerErr).To(BeNil())
+			Expect(queueManager).ToNot(BeNil())
+		})
+
+		AfterEach(func() {
+			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
+
+			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, true)
+			Expect(err).To(BeNil())
+
+			defer queueManager.Close()
+		})
+
+		It("can consume and publish to the AMQL service", func() {
+			deliveries, err := queueManager.Consume()
+			Expect(err).To(BeNil())
+
+			err = queueManager.Publish("#", "text/plain", "foo",
+				func(ack chan uint64, nack chan uint64) {
+					select {
+					case tag := <-ack:
+						Expect(tag).To(Equal(uint64(1)))
+					case tag := <-nack:
+						Expect(tag).ToNot(HaveOccurred())
+					}
+				})
+			Expect(err).To(BeNil())
+
+			for d := range deliveries {
+				Expect(string(d.Body)).To(Equal("foo"))
+				d.Ack(false)
+				break
+			}
+		})
+	})
 })
