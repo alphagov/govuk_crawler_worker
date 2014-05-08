@@ -1,4 +1,4 @@
-package crawler_test
+package http_crawler_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestCrawler(t *testing.T) {
+func TestHTTPCrawler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Crawler Suite")
+	RunSpecs(t, "HTTP Crawler Suite")
 }
