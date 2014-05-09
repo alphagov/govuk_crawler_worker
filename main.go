@@ -8,11 +8,19 @@ import (
 
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/streadway/amqp"
 )
 
-var (
-	dontQuit = make(chan int)
+type CrawlerMessageItem struct {
+	amqp.Delivery
+	HTMLBody []byte
+}
 
+func NewCrawlerMessageItem(delivery amqp.Delivery) *CrawlerMessageItem {
+	return &CrawlerMessageItem{Delivery: delivery}
+}
+
+var (
 	amqpAddr       = getEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 	exchangeName   = getEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
 	queueName      = getEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")

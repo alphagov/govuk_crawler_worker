@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	delivery := &amqp.Delivery{Body: []byte("https://www.gov.uk/")}
+	delivery := amqp.Delivery{Body: []byte("https://www.gov.uk/")}
 
 	It("generates a CrawlerMessageItem object", func() {
 		Expect(NewCrawlerMessageItem(delivery)).
@@ -28,20 +28,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item.HTMLBody = []byte("foo")
 
 			Expect(item.HTMLBody).To(Equal([]byte("foo")))
-		})
-	})
-
-	Describe("getting and setting the URLsFound", func() {
-		It("can get the URLsFound of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery)
-			Expect(item.URLsFound).To(BeNil())
-		})
-
-		It("can set the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery)
-			item.URLsFound = []string{"a", "b", "c"}
-
-			Expect(item.URLsFound).To(Equal([]string{"a", "b", "c"}))
 		})
 	})
 })
