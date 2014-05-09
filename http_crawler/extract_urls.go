@@ -45,8 +45,14 @@ func findByElementAttribute(document *goquery.Document, host string, element str
 			log.Fatal(err)
 		}
 
-		if exists && u.Host == host {
-			urls = append(urls, trimmedHref)
+		if exists {
+			if u.Host == host {
+				urls = append(urls, trimmedHref)
+			}
+
+			if u.Host == "" {
+				urls = append(urls, "http://"+host+trimmedHref)
+			}
 		}
 	})
 
