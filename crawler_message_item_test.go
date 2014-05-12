@@ -30,4 +30,16 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.HTMLBody).To(Equal([]byte("foo")))
 		})
 	})
+
+	It("is able to state whether the content type is HTML", func() {
+		item := NewCrawlerMessageItem(delivery)
+		item.HTMLBody = []byte(`
+<html>
+<head><title>test</title</head>
+<body><h1>TEST</h1></body>
+</html>
+`)
+
+		Expect(item.IsHTML()).To(BeTrue())
+	})
 })
