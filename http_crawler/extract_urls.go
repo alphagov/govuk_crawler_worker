@@ -50,7 +50,7 @@ func findByElementAttribute(document *goquery.Document, host string, element str
 				urls = append(urls, trimmedHref)
 			}
 
-			if u.Host == "" {
+			if u.Host == "" && trimmedHref[0] == '/' {
 				urls = append(urls, "http://"+host+trimmedHref)
 			}
 		}

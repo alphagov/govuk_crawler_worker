@@ -82,10 +82,11 @@ var _ = Describe("ExtractURLs", func() {
 	})
 
 	It("should extract relative URLs", func() {
-		buffer := bytes.NewBufferString(`<div><a href="/foo/bar"></a></div>`)
+		buffer := bytes.NewBufferString(`<div><a href="/foo/bar">a</a><a href="mailto:c@d.com">b</a></div>`)
 		urls, err := ExtractURLs(buffer, "www.foo.com")
 
 		Expect(err).To(BeNil())
+		Expect(len(urls)).To(Equal(1))
 		Expect(urls).To(ContainElement("http://www.foo.com/foo/bar"))
 	})
 })
