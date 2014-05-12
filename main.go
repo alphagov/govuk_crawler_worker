@@ -6,19 +6,11 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/streadway/amqp"
 )
-
-type CrawlerMessageItem struct {
-	amqp.Delivery
-	HTMLBody []byte
-}
-
-func NewCrawlerMessageItem(delivery amqp.Delivery) *CrawlerMessageItem {
-	return &CrawlerMessageItem{Delivery: delivery}
-}
 
 var (
 	amqpAddr       = getEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
