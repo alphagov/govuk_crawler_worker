@@ -1,17 +1,12 @@
 package queue
 
 import (
-	"log"
-
 	"github.com/streadway/amqp"
 )
 
 type QueueConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
-
-	ack  chan uint64
-	nack chan uint64
 }
 
 func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
@@ -25,18 +20,9 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		return nil, err
 	}
 
-	err = channel.Confirm(false)
-	if err != nil {
-		return nil, err
-	}
-
-	ack, nack := channel.NotifyConfirm(make(chan uint64, 1), make(chan uint64, 1))
-
 	return &QueueConnection{
 		Connection: connection,
 		Channel:    channel,
-		ack:        ack,
-		nack:       nack,
 	}, nil
 }
 
@@ -99,8 +85,6 @@ func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName str
 }
 
 func (c *QueueConnection) Publish(exchangeName string, routingKey string, contentType string, body string) error {
-	defer publisherConfirm(c)
-
 	return c.Channel.Publish(
 		exchangeName, // publish to an exchange
 		routingKey,   // routing to 0 or more queues
@@ -114,21 +98,4 @@ func (c *QueueConnection) Publish(exchangeName string, routingKey string, conten
 			DeliveryMode:    amqp.Persistent,
 			Priority:        0, // 0-9
 		})
-}
-
-func publisherConfirm(c *QueueConnection) {
-	select {
-	case tag := <-c.ack:
-		log.Println("Acknowledge message publish:", tag)
-		err := c.Channel.Ack(tag, false)
-		if err != nil {
-			log.Fatal("Couldn't ack:", tag, err)
-		}
-	case tag := <-c.nack:
-		log.Println("Couldn't acknowledge message publish:", tag)
-		err := c.Channel.Nack(tag, false, true)
-		if err != nil {
-			log.Fatal("Couldn't nack:", tag, err)
-		}
-	}
 }
