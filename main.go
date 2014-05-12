@@ -42,7 +42,19 @@ func main() {
 	defer queueManager.Close()
 	log.Println("Connected to AMQP service:", queueManager)
 
-	log.Fatal("Nothing to see here yet.")
+	crawler, err := http_crawler.NewCrawler(rootURL)
+	if err != nil {
+		log.Fatal("Couldn't generate Crawler:", err)
+	}
+
+	deliveries, err := queueManager.Consume()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dontQuit := make(chan int)
+
+	<-dontQuit
 }
 
 func getEnvDefault(key string, defaultVal string) string {
