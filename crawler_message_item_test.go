@@ -13,18 +13,18 @@ var _ = Describe("CrawlerMessageItem", func() {
 	delivery := amqp.Delivery{Body: []byte("https://www.gov.uk/")}
 
 	It("generates a CrawlerMessageItem object", func() {
-		Expect(NewCrawlerMessageItem(delivery, "www.gov.uk")).
+		Expect(NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})).
 			ToNot(BeNil())
 	})
 
 	Describe("getting and setting the HTMLBody", func() {
 		It("can get the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk")
+			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
 			Expect(item.HTMLBody).To(BeNil())
 		})
 
 		It("can set the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk")
+			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
 			item.HTMLBody = []byte("foo")
 
 			Expect(item.HTMLBody).To(Equal([]byte("foo")))
@@ -32,7 +32,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("is able to state whether the content type is HTML", func() {
-		item := NewCrawlerMessageItem(delivery, "www.gov.uk")
+		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
 		item.HTMLBody = []byte(`
 <html>
 <head><title>test</title</head>
@@ -48,7 +48,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		BeforeEach(func() {
 			delivery := amqp.Delivery{Body: []byte("https://www.foo.com/")}
-			item = NewCrawlerMessageItem(delivery, "www.foo.com")
+			item = NewCrawlerMessageItem(delivery, "www.foo.com", []string{})
 		})
 
 		It("should return an empty array if it can't find any matching URLs", func() {
@@ -130,5 +130,15 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(len(urls)).To(Equal(1))
 			Expect(urls).To(ContainElement("http://www.foo.com/foo/bar"))
 		})
+	})
+
+	It("removes paths that are blacklisted", func() {
+		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{"/trade-tariff"})
+		item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`)
+
+		urls, err := item.ExtractURLs()
+
+		Expect(err).To(BeNil())
+		Expect(len(urls)).To(Equal(1))
 	})
 })
