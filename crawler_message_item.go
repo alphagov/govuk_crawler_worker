@@ -14,17 +14,21 @@ import (
 type CrawlerMessageItem struct {
 	amqp.Delivery
 	HTMLBody []byte
+	host     string
 }
 
-func NewCrawlerMessageItem(delivery amqp.Delivery) *CrawlerMessageItem {
-	return &CrawlerMessageItem{Delivery: delivery}
+func NewCrawlerMessageItem(delivery amqp.Delivery, host string) *CrawlerMessageItem {
+	return &CrawlerMessageItem{
+		Delivery: delivery,
+		host:     host,
+	}
 }
 
 func (c *CrawlerMessageItem) IsHTML() bool {
 	return http.DetectContentType(c.HTMLBody) == "text/html; charset=utf-8"
 }
 
-func (c *CrawlerMessageItem) ExtractURLs(host string) ([]string, error) {
+func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {
 	urls := []string{}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.HTMLBody))
@@ -41,7 +45,7 @@ func (c *CrawlerMessageItem) ExtractURLs(host string) ([]string, error) {
 
 	for _, attr := range urlElementMatches {
 		element, attr := attr[0], attr[1]
-		urls = append(urls, findByElementAttribute(document, host, element, attr)...)
+		urls = append(urls, findByElementAttribute(document, c.host, element, attr)...)
 	}
 
 	return urls, err
