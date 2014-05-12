@@ -46,11 +46,13 @@ func main() {
 	if err != nil {
 		log.Fatal("Couldn't generate Crawler:", err)
 	}
+	log.Println("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Generated delivery (consumer) channel:", deliveries)
 
 	dontQuit := make(chan int)
 
