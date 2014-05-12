@@ -64,22 +64,14 @@ var _ = Describe("QueueManager", func() {
 			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, true)
 			Expect(err).To(BeNil())
 
-			defer queueManager.Close()
+			queueManager.Close()
 		})
 
 		It("can consume and publish to the AMQL service", func() {
 			deliveries, err := queueManager.Consume()
 			Expect(err).To(BeNil())
 
-			err = queueManager.Publish("#", "text/plain", "foo",
-				func(ack chan uint64, nack chan uint64) {
-					select {
-					case tag := <-ack:
-						Expect(tag).To(Equal(uint64(1)))
-					case tag := <-nack:
-						Expect(tag).ToNot(HaveOccurred())
-					}
-				})
+			err = queueManager.Publish("#", "text/plain", "foo")
 			Expect(err).To(BeNil())
 
 			for d := range deliveries {

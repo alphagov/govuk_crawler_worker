@@ -119,8 +119,8 @@ var _ = Describe("QueueConnection", func() {
 			err = consumer.Channel.ExchangeDelete(exchangeName, false, true)
 			Expect(err).To(BeNil())
 
-			Expect(publisher.Close()).To(BeNil())
-			Expect(consumer.Close()).To(BeNil())
+			defer publisher.Close()
+			defer consumer.Close()
 		})
 
 		It("should consume and publish messages onto the provided queue and exchange", func() {
@@ -136,15 +136,7 @@ var _ = Describe("QueueConnection", func() {
 			deliveries, err := consumer.Consume(queueName)
 			Expect(err).To(BeNil())
 
-			err = publisher.Publish(exchangeName, "#", "text/plain", "foo",
-				func(ack chan uint64, nack chan uint64) {
-					select {
-					case tag := <-ack:
-						Expect(tag).To(Equal(uint64(1)))
-					case tag := <-nack:
-						Expect(tag).ToNot(HaveOccurred())
-					}
-				})
+			err = publisher.Publish(exchangeName, "#", "text/plain", "foo")
 			Expect(err).To(BeNil())
 
 			for d := range deliveries {

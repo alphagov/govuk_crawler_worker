@@ -52,15 +52,13 @@ func (h *QueueManager) Consume() (<-chan amqp.Delivery, error) {
 func (h *QueueManager) Publish(
 	routingKey string,
 	contentType string,
-	body string,
-	ackFunction func(ack chan uint64, nack chan uint64)) error {
+	body string) error {
 
 	return h.Producer.Publish(
 		h.ExchangeName,
 		routingKey,
 		contentType,
-		body,
-		ackFunction)
+		body)
 }
 
 func setupExchangeAndQueue(connection *QueueConnection, exchangeName string, queueName string) error {
