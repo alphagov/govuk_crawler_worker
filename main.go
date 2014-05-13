@@ -56,8 +56,10 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	acknowledge := readFromQueue(deliveries)
-	go acknowledgeItem(ttlHashSet, acknowledge)
+	crawlItems := readFromQueue(deliveries, ttlHashSet)
+	acknowledge := crawlURL(crawlItems, crawler)
+
+	go acknowledgeItem(acknowledge, ttlHashSet)
 
 	<-dontQuit
 }
@@ -71,29 +73,72 @@ func getEnvDefault(key string, defaultVal string) string {
 	return val
 }
 
-func readFromQueue(inbound <-chan amqp.Delivery) <-chan *CrawlerMessageItem {
+func readFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet) <-chan *CrawlerMessageItem {
 	outbound := make(chan *CrawlerMessageItem, 1)
 
 	go func() {
 		for item := range inbound {
-			outbound <- NewCrawlerMessageItem(item, "", []string{})
+			message := NewCrawlerMessageItem(item, "", []string{})
+
+			exists, err := ttlHashSet.Exists(message.URL())
+			if err != nil {
+				log.Println("Couldn't check existence of:", message.URL(), err)
+				item.Reject(true)
+				continue
+			}
+
+			if !exists {
+				outbound <- message
+			} else {
+				log.Println("URL already crawled:", message.URL())
+				item.Ack(false)
+			}
 		}
 	}()
 
 	return outbound
 }
 
-func acknowledgeItem(ttlHashSet *ttl_hash_set.TTLHashSet, inbound <-chan *CrawlerMessageItem) {
+func crawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
+	extract := make(chan *CrawlerMessageItem, 1)
+
+	go func() {
+		for item := range crawlChannel {
+			url := item.URL()
+			log.Println("Crawling URL:", url)
+
+			body, err := crawler.Crawl(url)
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't crawl:", url, err)
+				continue
+			}
+
+			item.HTMLBody = body
+
+			if item.IsHTML() {
+				extract <- item
+			} else {
+				item.Ack(false)
+			}
+		}
+	}()
+
+	return extract
+}
+
+func acknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
 	for item := range inbound {
 		url := item.URL()
 
 		_, err := ttlHashSet.Add(url)
 		if err != nil {
 			item.Reject(false)
-			log.Println("Ack:", url, err)
+			log.Println("Acknowledge failed:", url, err)
+			continue
 		}
 
-		log.Println("Acknowledging:", url)
 		item.Ack(false)
+		log.Println("Acknowledged:", url)
 	}
 }
