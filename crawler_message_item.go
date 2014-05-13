@@ -31,6 +31,10 @@ func (c *CrawlerMessageItem) IsHTML() bool {
 	return http.DetectContentType(c.HTMLBody) == "text/html; charset=utf-8"
 }
 
+func (c *CrawlerMessageItem) URL() string {
+	return string(c.Body)
+}
+
 func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {
 	urls := []string{}
 
