@@ -9,6 +9,7 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/streadway/amqp"
 )
 
 var (
@@ -55,6 +56,9 @@ func main() {
 
 	dontQuit := make(chan int)
 
+	acknowledge := readFromQueue(deliveries)
+	go acknowledgeItem(ttlHashSet, acknowledge)
+
 	<-dontQuit
 }
 
@@ -65,4 +69,31 @@ func getEnvDefault(key string, defaultVal string) string {
 	}
 
 	return val
+}
+
+func readFromQueue(inbound <-chan amqp.Delivery) <-chan *CrawlerMessageItem {
+	outbound := make(chan *CrawlerMessageItem, 1)
+
+	go func() {
+		for item := range inbound {
+			outbound <- NewCrawlerMessageItem(item, "", []string{})
+		}
+	}()
+
+	return outbound
+}
+
+func acknowledgeItem(ttlHashSet *ttl_hash_set.TTLHashSet, inbound <-chan *CrawlerMessageItem) {
+	for item := range inbound {
+		url := item.URL()
+
+		_, err := ttlHashSet.Add(url)
+		if err != nil {
+			item.Reject(false)
+			log.Println("Ack:", url, err)
+		}
+
+		log.Println("Acknowledging:", url)
+		item.Ack(false)
+	}
 }
