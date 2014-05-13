@@ -1,12 +1,16 @@
 package queue
 
 import (
+	"log"
+
 	"github.com/streadway/amqp"
 )
 
 type QueueConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
+
+	notifyClose chan *amqp.Error
 }
 
 func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
@@ -20,10 +24,22 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		return nil, err
 	}
 
-	return &QueueConnection{
-		Connection: connection,
-		Channel:    channel,
-	}, nil
+	queueConnection := &QueueConnection{
+		Connection:  connection,
+		Channel:     channel,
+		notifyClose: channel.NotifyClose(make(chan *amqp.Error)),
+	}
+
+	go func() {
+		select {
+		case e := <-queueConnection.notifyClose:
+			if e == amqp.ErrClosed {
+				log.Fatal(e)
+			}
+		}
+	}()
+
+	return queueConnection, nil
 }
 
 func (c *QueueConnection) Close() error {
