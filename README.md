@@ -20,3 +20,10 @@ You can run the tests by running the following:
 go get -v -t ./...
 go test -v ./...
 ```
+
+## Running
+
+To run the worker you'll first need to build it using `go build` to
+generate a binary. You can then run the built binary directly using
+`./govuk_crawler_worker`. All configuration is injected using
+environment varibles. For details on this look at the `main.go` file.
