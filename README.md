@@ -9,6 +9,7 @@ from a message queue and crawl them, saving the output to disk.
 
 To run this worker you will need:
 
+ - Go 1.2
  - [RabbitMQ](https://www.rabbitmq.com/)
  - [Redis](http://redis.io/)
 
