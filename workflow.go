@@ -24,6 +24,31 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 	}
 }
 
+func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
+	publishChannel := make(chan string, 1000)
+	acknowledgeChannel := make(chan *CrawlerMessageItem, 1)
+
+	go func() {
+		for item := range extract {
+			urls, err := item.ExtractURLs()
+			if err != nil {
+				item.Reject(false)
+				log.Println("ExtractURLs:", string(item.Body), err)
+			}
+
+			log.Println("Extracted URLs:", len(urls))
+
+			acknowledgeChannel <- item
+
+			for _, url := range urls {
+				publishChannel <- url
+			}
+		}
+	}()
+
+	return publishChannel, acknowledgeChannel
+}
+
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
 		exists, err := ttlHashSet.Exists(url)

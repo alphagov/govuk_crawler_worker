@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/fzzy/radix/redis"
+	"github.com/streadway/amqp"
 )
 
 var _ = Describe("Workflow", func() {
@@ -85,6 +86,28 @@ var _ = Describe("Workflow", func() {
 				Expect(exists).To(BeTrue())
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
+				close(outbound)
+			})
+		})
+
+		Describe("ExtractURLs", func() {
+			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
+				url := "https://www.gov.uk/extract-some-urls"
+				deliveryItem := &amqp.Delivery{Body: []byte(url)}
+				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				publish, acknowledge := ExtractURLs(outbound)
+
+				Expect(len(publish)).To(Equal(0))
+				Expect(len(acknowledge)).To(Equal(0))
+
+				outbound <- item
+
+				Expect(<-publish).To(Equal("https://www.gov.uk/some-url"))
+				Expect(<-acknowledge).To(Equal(item))
+
 				close(outbound)
 			})
 		})
