@@ -1,9 +1,14 @@
 package main_test
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
+
+	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
 	. "github.com/alphagov/govuk_crawler_worker/queue"
 	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 
@@ -86,6 +91,37 @@ var _ = Describe("Workflow", func() {
 				Expect(exists).To(BeTrue())
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
+				close(outbound)
+			})
+		})
+
+		Describe("CrawlURL", func() {
+			var (
+				crawler    *Crawler
+				crawlerErr error
+			)
+
+			BeforeEach(func() {
+				crawler, crawlerErr = NewCrawler("http://127.0.0.1/")
+
+				Expect(crawlerErr).To(BeNil())
+				Expect(crawler).ToNot(BeNil())
+			})
+
+			It("crawls a URL and assigns the body", func() {
+				outbound := make(chan *CrawlerMessageItem, 1)
+
+				body := `<a href="foo.com">bar</a>`
+				server := testServer(200, body)
+
+				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
+				outbound <- NewCrawlerMessageItem(*deliveryItem, "127.0.0.1", []string{})
+
+				crawled := CrawlURL(outbound, crawler)
+
+				Expect((<-crawled).HTMLBody[0:25]).To(Equal([]byte(body)))
+
+				server.Close()
 				close(outbound)
 			})
 		})
@@ -210,4 +246,11 @@ func purgeAllKeys(prefix string, address string) error {
 	}
 
 	return nil
+}
+
+func testServer(status int, body string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		fmt.Fprintln(w, body)
+	}))
 }

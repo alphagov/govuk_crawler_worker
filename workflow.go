@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/streadway/amqp"
@@ -22,6 +23,34 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		item.Ack(false)
 		log.Println("Acknowledged:", url)
 	}
+}
+
+func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
+	extract := make(chan *CrawlerMessageItem, 1)
+
+	go func() {
+		for item := range crawlChannel {
+			url := item.URL()
+			log.Println("Crawling URL:", url)
+
+			body, err := crawler.Crawl(url)
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't crawl:", url, err)
+				continue
+			}
+
+			item.HTMLBody = body
+
+			if item.IsHTML() {
+				extract <- item
+			} else {
+				item.Ack(false)
+			}
+		}
+	}()
+
+	return extract
 }
 
 func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
