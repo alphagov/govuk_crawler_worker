@@ -52,39 +52,41 @@ var _ = Describe("Workflow", func() {
 			queueManager.Close()
 		})
 
-		It("should read from a channel and add URLs to the hash set", func() {
-			url := "https://www.gov.uk/foo"
+		Describe("AcknowledgeItem", func() {
+			It("should read from a channel and add URLs to the hash set", func() {
+				url := "https://www.gov.uk/foo"
 
-			exists, err := ttlHashSet.Exists(url)
-			Expect(err).To(BeNil())
-			Expect(exists).To(BeFalse())
+				exists, err := ttlHashSet.Exists(url)
+				Expect(err).To(BeNil())
+				Expect(exists).To(BeFalse())
 
-			deliveries, err := queueManager.Consume()
-			Expect(err).To(BeNil())
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
 
-			outbound := make(chan *CrawlerMessageItem, 1)
+				outbound := make(chan *CrawlerMessageItem, 1)
 
-			err = queueManager.Publish("#", "text/plain", url)
-			Expect(err).To(BeNil())
+				err = queueManager.Publish("#", "text/plain", url)
+				Expect(err).To(BeNil())
 
-			for item := range deliveries {
-				outbound <- NewCrawlerMessageItem(item, "www.gov.uk", []string{})
-				break
-			}
+				for item := range deliveries {
+					outbound <- NewCrawlerMessageItem(item, "www.gov.uk", []string{})
+					break
+				}
 
-			Expect(len(outbound)).To(Equal(1))
+				Expect(len(outbound)).To(Equal(1))
 
-			go AcknowledgeItem(outbound, ttlHashSet)
-			time.Sleep(time.Millisecond)
+				go AcknowledgeItem(outbound, ttlHashSet)
+				time.Sleep(time.Millisecond)
 
-			Expect(len(outbound)).To(Equal(0))
+				Expect(len(outbound)).To(Equal(0))
 
-			exists, err = ttlHashSet.Exists(url)
-			Expect(err).To(BeNil())
-			Expect(exists).To(BeTrue())
+				exists, err = ttlHashSet.Exists(url)
+				Expect(err).To(BeNil())
+				Expect(exists).To(BeTrue())
 
-			// Close the channel to stop the goroutine for AcknowledgeItem.
-			close(outbound)
+				// Close the channel to stop the goroutine for AcknowledgeItem.
+				close(outbound)
+			})
 		})
 	})
 })
