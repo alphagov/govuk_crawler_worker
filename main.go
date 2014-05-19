@@ -9,7 +9,6 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
-	"github.com/streadway/amqp"
 )
 
 var (
@@ -56,10 +55,12 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	crawlItems := readFromQueue(deliveries, ttlHashSet)
-	acknowledge := crawlURL(crawlItems, crawler)
+	crawlItems := ReadFromQueue(deliveries, ttlHashSet)
+	extract := CrawlURL(crawlItems, crawler)
+	publish, acknowledge := ExtractURLs(extract)
 
-	go acknowledgeItem(acknowledge, ttlHashSet)
+	go PublishURLs(ttlHashSet, queueManager, publish)
+	go AcknowledgeItem(acknowledge, ttlHashSet)
 
 	<-dontQuit
 }
@@ -71,74 +72,4 @@ func getEnvDefault(key string, defaultVal string) string {
 	}
 
 	return val
-}
-
-func readFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet) <-chan *CrawlerMessageItem {
-	outbound := make(chan *CrawlerMessageItem, 1)
-
-	go func() {
-		for item := range inbound {
-			message := NewCrawlerMessageItem(item, "", []string{})
-
-			exists, err := ttlHashSet.Exists(message.URL())
-			if err != nil {
-				log.Println("Couldn't check existence of:", message.URL(), err)
-				item.Reject(true)
-				continue
-			}
-
-			if !exists {
-				outbound <- message
-			} else {
-				log.Println("URL already crawled:", message.URL())
-				item.Ack(false)
-			}
-		}
-	}()
-
-	return outbound
-}
-
-func crawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
-	extract := make(chan *CrawlerMessageItem, 1)
-
-	go func() {
-		for item := range crawlChannel {
-			url := item.URL()
-			log.Println("Crawling URL:", url)
-
-			body, err := crawler.Crawl(url)
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't crawl:", url, err)
-				continue
-			}
-
-			item.HTMLBody = body
-
-			if item.IsHTML() {
-				extract <- item
-			} else {
-				item.Ack(false)
-			}
-		}
-	}()
-
-	return extract
-}
-
-func acknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
-	for item := range inbound {
-		url := item.URL()
-
-		_, err := ttlHashSet.Add(url)
-		if err != nil {
-			item.Reject(false)
-			log.Println("Acknowledge failed:", url, err)
-			continue
-		}
-
-		item.Ack(false)
-		log.Println("Acknowledged:", url)
-	}
 }
