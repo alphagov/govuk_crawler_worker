@@ -88,6 +88,69 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 		})
+
+		Describe("PublishURLs", func() {
+			It("doesn't publish URLs that have already been crawled", func() {
+				url := "https://www.gov.uk/government/organisations"
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				_, err = ttlHashSet.Add(url)
+				Expect(err).To(BeNil())
+
+				publish := make(chan string, 1)
+				outbound := make(chan []byte, 1)
+
+				go func() {
+					for item := range deliveries {
+						outbound <- item.Body
+					}
+				}()
+				go PublishURLs(ttlHashSet, queueManager, publish)
+				time.Sleep(time.Millisecond)
+
+				publish <- url
+				time.Sleep(time.Millisecond)
+
+				Expect(len(publish)).To(Equal(0))
+				Expect(len(outbound)).To(Equal(0))
+
+				// Close the channel to stop the goroutine for PublishURLs.
+				close(publish)
+				close(outbound)
+			})
+
+			It("publishes URLs that haven't been crawled yet", func() {
+				url := "https://www.gov.uk/government/foo"
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				publish := make(chan string, 1)
+				outbound := make(chan []byte, 1)
+
+				go func() {
+					for item := range deliveries {
+						outbound <- item.Body
+					}
+				}()
+				go PublishURLs(ttlHashSet, queueManager, publish)
+				time.Sleep(time.Millisecond)
+
+				publish <- url
+				time.Sleep(5 * time.Millisecond)
+
+				Expect(len(publish)).To(Equal(0))
+				Expect(len(outbound)).To(Equal(1))
+				Expect(<-outbound).To(Equal([]byte(url)))
+
+				close(publish)
+				close(outbound)
+			})
+		})
 	})
 })
 
