@@ -5,6 +5,7 @@ import (
 
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/streadway/amqp"
 )
 
 func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
@@ -38,4 +39,31 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 			}
 		}
 	}
+}
+
+func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet) chan *CrawlerMessageItem {
+	outbound := make(chan *CrawlerMessageItem, 1)
+
+	go func() {
+		for item := range inbound {
+			// TODO: Fill out the blacklisted URLs. Maybe using ENV vars?
+			message := NewCrawlerMessageItem(item, "", []string{})
+
+			exists, err := ttlHashSet.Exists(message.URL())
+			if err != nil {
+				log.Println("Couldn't check existence of:", message.URL(), err)
+				item.Reject(true)
+				continue
+			}
+
+			if !exists {
+				outbound <- message
+			} else {
+				log.Println("URL already crawled:", message.URL())
+				item.Ack(false)
+			}
+		}
+	}()
+
+	return outbound
 }

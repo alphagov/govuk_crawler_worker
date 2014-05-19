@@ -151,6 +151,25 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 		})
+
+		Describe("ReadFromQueue", func() {
+			It("provides a way of converting AMQP bodies to CrawlerMessageItems", func() {
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				outbound := ReadFromQueue(deliveries, ttlHashSet)
+				Expect(len(outbound)).To(Equal(0))
+
+				url := "https://www.foo.com/bar"
+				err = queueManager.Publish("#", "text/plain", url)
+				Expect(err).To(BeNil())
+
+				item := <-outbound
+				Expect(string(item.Body)).To(Equal(url))
+
+				close(outbound)
+			})
+		})
 	})
 })
 
