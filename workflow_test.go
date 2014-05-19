@@ -161,14 +161,11 @@ var _ = Describe("Workflow", func() {
 					}
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
-				time.Sleep(time.Millisecond)
 
 				publish <- url
-				time.Sleep(5 * time.Millisecond)
 
-				Expect(len(publish)).To(Equal(0))
-				Expect(len(outbound)).To(Equal(1))
 				Expect(<-outbound).To(Equal([]byte(url)))
+				Expect(len(publish)).To(Equal(0))
 
 				close(publish)
 				close(outbound)
