@@ -1,12 +1,9 @@
-.PHONY: deps build test
+.PHONY: build test
 
 GOPATH := `pwd`/vendor:$(GOPATH)
 BINARY := govuk_crawler_worker
 
-all: deps build test
-
-deps:
-	git submodule update --init
+all: build test
 
 build:
 	GOPATH=$(GOPATH) go build -o $(BINARY)
