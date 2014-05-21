@@ -7,7 +7,7 @@ services:
   - rabbitmq
   - redis-server
 
-script: ./run_tests.sh
+script: make
 
 notifications:
   email: false
