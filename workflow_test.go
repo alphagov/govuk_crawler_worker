@@ -213,7 +213,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := ReadFromQueue(deliveries, ttlHashSet)
+				outbound := ReadFromQueue(deliveries, ttlHashSet, []string{})
 				Expect(len(outbound)).To(Equal(0))
 
 				url := "https://www.foo.com/bar"

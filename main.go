@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
@@ -18,6 +19,7 @@ var (
 	redisAddr      = getEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix = getEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
 	rootURL        = getEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	blacklistPaths = getEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 )
 
 func main() {
@@ -55,7 +57,7 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	crawlItems := ReadFromQueue(deliveries, ttlHashSet)
+	crawlItems := ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
 	extract := CrawlURL(crawlItems, crawler)
 	publish, acknowledge := ExtractURLs(extract)
 
@@ -72,4 +74,19 @@ func getEnvDefault(key string, defaultVal string) string {
 	}
 
 	return val
+}
+
+func splitPaths(paths string) []string {
+	if !strings.Contains(paths, ",") {
+		return []string{paths}
+	}
+
+	splitPaths := strings.Split(paths, ",")
+	trimmedPaths := make([]string, len(splitPaths))
+
+	for i, v := range splitPaths {
+		trimmedPaths[i] = v
+	}
+
+	return trimmedPaths
 }

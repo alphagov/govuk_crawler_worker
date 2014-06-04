@@ -95,13 +95,12 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 	}
 }
 
-func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet) chan *CrawlerMessageItem {
+func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
 	outbound := make(chan *CrawlerMessageItem, 1)
 
 	go func() {
 		for item := range inbound {
-			// TODO: Fill out the blacklisted URLs. Maybe using ENV vars?
-			message := NewCrawlerMessageItem(item, "", []string{})
+			message := NewCrawlerMessageItem(item, "", blacklistPaths)
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {
