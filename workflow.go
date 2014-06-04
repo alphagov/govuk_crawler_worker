@@ -26,29 +26,31 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 }
 
 func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
-	extract := make(chan *CrawlerMessageItem, 1)
+	extract := make(chan *CrawlerMessageItem, 2)
 
-	go func() {
-		for item := range crawlChannel {
-			url := item.URL()
-			log.Println("Crawling URL:", url)
+	for i := 0; i < 2; i++ {
+		go func() {
+			for item := range crawlChannel {
+				url := item.URL()
+				log.Println("Crawling URL:", url)
 
-			body, err := crawler.Crawl(url)
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't crawl (rejecting):", url, err)
-				continue
+				body, err := crawler.Crawl(url)
+				if err != nil {
+					item.Reject(false)
+					log.Println("Couldn't crawl (rejecting):", url, err)
+					continue
+				}
+
+				item.HTMLBody = body
+
+				if item.IsHTML() {
+					extract <- item
+				} else {
+					item.Ack(false)
+				}
 			}
-
-			item.HTMLBody = body
-
-			if item.IsHTML() {
-				extract <- item
-			} else {
-				item.Ack(false)
-			}
-		}
-	}()
+		}()
+	}
 
 	return extract
 }
@@ -96,7 +98,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 }
 
 func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
-	outbound := make(chan *CrawlerMessageItem, 1)
+	outbound := make(chan *CrawlerMessageItem, 2)
 
 	go func() {
 		for item := range inbound {
