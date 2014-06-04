@@ -16,7 +16,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		_, err := ttlHashSet.Add(url)
 		if err != nil {
 			item.Reject(false)
-			log.Println("Acknowledge failed:", url, err)
+			log.Println("Acknowledge failed (rejecting):", url, err)
 			continue
 		}
 
@@ -36,7 +36,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			body, err := crawler.Crawl(url)
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't crawl:", url, err)
+				log.Println("Couldn't crawl (rejecting):", url, err)
 				continue
 			}
 
@@ -62,7 +62,7 @@ func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *Cra
 			urls, err := item.ExtractURLs()
 			if err != nil {
 				item.Reject(false)
-				log.Println("ExtractURLs:", string(item.Body), err)
+				log.Println("ExtractURLs (rejecting):", string(item.Body), err)
 			}
 
 			log.Println("Extracted URLs:", len(urls))
@@ -105,8 +105,8 @@ func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHas
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {
-				log.Println("Couldn't check existence of:", message.URL(), err)
 				item.Reject(true)
+				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
