@@ -24,7 +24,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		return nil, err
 	}
 
-	err = channel.Qos(1, 0, false)
+	err = channel.Qos(5, 0, false)
 	if err != nil {
 		return nil, err
 	}
