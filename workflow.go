@@ -89,7 +89,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 		if !exists {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
-				log.Println("Delivery failed:", url, err)
+				log.Fatalln("Delivery failed:", url, err)
 			}
 		}
 	}
