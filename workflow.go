@@ -54,7 +54,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 }
 
 func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
-	publishChannel := make(chan string, 1000)
+	publishChannel := make(chan string, 100)
 	acknowledgeChannel := make(chan *CrawlerMessageItem, 1)
 
 	go func() {
@@ -67,11 +67,11 @@ func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *Cra
 
 			log.Println("Extracted URLs:", len(urls))
 
-			acknowledgeChannel <- item
-
 			for _, url := range urls {
 				publishChannel <- url
 			}
+
+			acknowledgeChannel <- item
 		}
 	}()
 
