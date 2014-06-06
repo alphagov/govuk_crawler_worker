@@ -26,40 +26,49 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 }
 
 func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
-	extract := make(chan *CrawlerMessageItem, 2)
+	extractChannel := make(chan *CrawlerMessageItem, 2)
 
-	for i := 0; i < 2; i++ {
-		go func() {
-			for item := range crawlChannel {
-				url := item.URL()
-				log.Println("Crawling URL:", url)
+	crawlLoop := func(
+		crawl <-chan *CrawlerMessageItem,
+		extract chan<- *CrawlerMessageItem,
+		crawler *http_crawler.Crawler,
+	) {
+		for item := range crawl {
+			url := item.URL()
+			log.Println("Crawling URL:", url)
 
-				body, err := crawler.Crawl(url)
-				if err != nil {
-					item.Reject(false)
-					log.Println("Couldn't crawl (rejecting):", url, err)
-					continue
-				}
-
-				item.HTMLBody = body
-
-				if item.IsHTML() {
-					extract <- item
-				} else {
-					item.Ack(false)
-				}
+			body, err := crawler.Crawl(url)
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't crawl (rejecting):", url, err)
+				continue
 			}
-		}()
+
+			item.HTMLBody = body
+
+			if item.IsHTML() {
+				extract <- item
+			} else {
+				item.Ack(false)
+			}
+		}
 	}
 
-	return extract
+	go crawlLoop(crawlChannel, extractChannel, crawler)
+	go crawlLoop(crawlChannel, extractChannel, crawler)
+
+	return extractChannel
 }
 
-func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
+func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
 	publishChannel := make(chan string, 100)
 	acknowledgeChannel := make(chan *CrawlerMessageItem, 1)
 
-	go func() {
+	extractLoop := func(
+		extract <-chan *CrawlerMessageItem,
+		publish chan<- string,
+		acknowledge chan<- *CrawlerMessageItem,
+	) {
 		for item := range extract {
 			urls, err := item.ExtractURLs()
 			if err != nil {
@@ -70,12 +79,14 @@ func ExtractURLs(extract <-chan *CrawlerMessageItem) (<-chan string, <-chan *Cra
 			log.Println("Extracted URLs:", len(urls))
 
 			for _, url := range urls {
-				publishChannel <- url
+				publish <- url
 			}
 
-			acknowledgeChannel <- item
+			acknowledge <- item
 		}
-	}()
+	}
+
+	go extractLoop(extractChannel, publishChannel, acknowledgeChannel)
 
 	return publishChannel, acknowledgeChannel
 }
@@ -101,10 +112,15 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 	}
 }
 
-func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
-	outbound := make(chan *CrawlerMessageItem, 2)
+func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
+	outboundChannel := make(chan *CrawlerMessageItem, 2)
 
-	go func() {
+	readLoop := func(
+		inbound <-chan amqp.Delivery,
+		outbound chan<- *CrawlerMessageItem,
+		ttlHashSet *ttl_hash_set.TTLHashSet,
+		blacklistPaths []string,
+	) {
 		for item := range inbound {
 			message := NewCrawlerMessageItem(item, "", blacklistPaths)
 
@@ -126,7 +142,9 @@ func ReadFromQueue(inbound <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHas
 				item.Ack(false)
 			}
 		}
-	}()
+	}
 
-	return outbound
+	go readLoop(inboundChannel, outboundChannel, ttlHashSet, blacklistPaths)
+
+	return outboundChannel
 }
