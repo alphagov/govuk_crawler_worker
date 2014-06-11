@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
@@ -39,8 +40,17 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 
 			body, err := crawler.Crawl(url)
 			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't crawl (rejecting):", url, err)
+				if err == http_crawler.RetryRequestError {
+					item.Reject(true)
+					log.Println("Couldn't crawl (requeueing):", url, err)
+
+					// Back off from crawling for a few seconds.
+					time.Sleep(3 * time.Second)
+				} else {
+					item.Reject(false)
+					log.Println("Couldn't crawl (rejecting):", url, err)
+				}
+
 				continue
 			}
 
