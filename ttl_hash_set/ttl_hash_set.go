@@ -31,7 +31,7 @@ func (t *TTLHashSet) Add(key string) (bool, error) {
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
 	t.client.Append("SET", localKey, 1)
-	t.client.Append("EXPIRE", localKey, (24 * time.Hour).Seconds())
+	t.client.Append("EXPIRE", localKey, (12 * time.Hour).Seconds())
 	add, err := t.client.GetReply().Bool()
 	t.mutex.Unlock()
 
