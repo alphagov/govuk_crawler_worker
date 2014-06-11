@@ -59,6 +59,13 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(exists).To(Equal(true))
 		})
 
+		It("exposes a way to ping the underlying redis service", func() {
+			ping, err := ttlHashSet.Ping()
+
+			Expect(err).To(BeNil())
+			Expect(ping).To(Equal("PONG"))
+		})
+
 		Describe("TTL()", func() {
 			It("should return a negative TTL on a non-existent key", func() {
 				ttl, err := ttlHashSet.TTL("this.key.does.not.exist")
