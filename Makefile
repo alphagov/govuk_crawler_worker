@@ -1,4 +1,4 @@
-.PHONY: deps build test
+.PHONY: deps test build
 
 BINARY := govuk_crawler_worker
 
