@@ -10,21 +10,23 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	delivery := amqp.Delivery{Body: []byte("https://www.gov.uk/")}
+	host := "www.gov.uk"
+	example_url := "https://" + host + "/government/organisations"
+	delivery := amqp.Delivery{Body: []byte(example_url)}
 
 	It("generates a CrawlerMessageItem object", func() {
-		Expect(NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})).
+		Expect(NewCrawlerMessageItem(delivery, host, []string{})).
 			ToNot(BeNil())
 	})
 
 	Describe("getting and setting the HTMLBody", func() {
 		It("can get the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
+			item := NewCrawlerMessageItem(delivery, host, []string{})
 			Expect(item.HTMLBody).To(BeNil())
 		})
 
 		It("can set the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
+			item := NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = []byte("foo")
 
 			Expect(item.HTMLBody).To(Equal([]byte("foo")))
@@ -32,7 +34,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("is able to state whether the content type is HTML", func() {
-		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
+		item := NewCrawlerMessageItem(delivery, host, []string{})
 		item.HTMLBody = []byte(`
 <html>
 <head><title>test</title</head>
@@ -133,7 +135,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("removes paths that are blacklisted", func() {
-		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{"/trade-tariff"})
+		item := NewCrawlerMessageItem(delivery, host, []string{"/trade-tariff"})
 		item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`)
 
 		urls, err := item.ExtractURLs()
