@@ -57,6 +57,10 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			item.HTMLBody = body
 
 			if item.IsHTML() {
+				filePath, err := item.WriteToDisk()
+				if err != nil {
+					log.Printf("Failed to write crawl item for URL '%s' to disk using file path '%s': %s", item.URL(), filePath, err)
+				}
 				extract <- item
 			} else {
 				item.Ack(false)

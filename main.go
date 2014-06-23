@@ -21,6 +21,7 @@ var (
 	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
 	rootURL        = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
 
 func main() {
