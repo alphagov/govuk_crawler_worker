@@ -15,6 +15,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"os"
+
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 	"github.com/streadway/amqp"
@@ -32,9 +34,12 @@ var _ = Describe("Workflow", func() {
 			queueManagerErr error
 			ttlHashSet      *TTLHashSet
 			ttlHashSetErr   error
+			mirrorRoot      string
 		)
 
 		BeforeEach(func() {
+			mirrorRoot = os.Getenv("MIRROR_ROOT")
+
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
 
@@ -59,6 +64,7 @@ var _ = Describe("Workflow", func() {
 			Expect(err).To(BeNil())
 
 			queueManager.Close()
+			DeleteMirrorFilesFromDisk(mirrorRoot)
 		})
 
 		Describe("AcknowledgeItem", func() {

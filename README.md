@@ -23,6 +23,8 @@ go get -v -t ./...
 go test -v ./...
 ```
 
+__Be aware that the `MIRROR_ROOT` directory will be deleted after each test runs.__
+
 Alternatively to localise the dependencies you can use `make`. This
 will use the `third_party.go` tool to vendorise dependencies into a
 folder within the project.

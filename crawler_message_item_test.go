@@ -36,6 +36,10 @@ var _ = Describe("CrawlerMessageItem", func() {
 		item.HTMLBody = html
 	})
 
+	AfterEach(func() {
+		DeleteMirrorFilesFromDisk(mirrorRoot)
+	})
+
 	It("generates a CrawlerMessageItem object", func() {
 		Expect(NewCrawlerMessageItem(delivery, host, []string{})).
 			ToNot(BeNil())
