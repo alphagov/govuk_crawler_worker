@@ -79,7 +79,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("strips illegal characters", func() {
-			testUrl = baseUrl + "/../!t@e£s$t/u^r*l(){}"
+			testUrl = baseUrl + "/../!T@e£s$t/U^R*L(){}"
 			expectedFilePath = mirrorRoot + "/test/url"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
