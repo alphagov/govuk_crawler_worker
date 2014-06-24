@@ -17,7 +17,8 @@ To run this worker you will need:
 
 You can run the tests locally by running the following:
 
-```
+```bash
+export MIRROR_ROOT=${HOME}/path/to/mirror/root
 go get -v -t ./...
 go test -v ./...
 ```
