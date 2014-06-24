@@ -41,15 +41,15 @@ func (c *CrawlerMessageItem) URL() string {
 	return string(c.Body)
 }
 
-func (c *CrawlerMessageItem) FileName() (string, error) {
-	var fileName string
+func (c *CrawlerMessageItem) FilePath() (string, error) {
+	var filePath string
 
 	if mirrorRoot == "" {
 		return "", errors.New("mirrorRoot not defined")
 	}
 
 	if strings.HasSuffix(mirrorRoot, "/") == false {
-		fileName = "/"
+		filePath = "/"
 	}
 
 	urlParts, err := url.Parse(c.URL())
@@ -57,7 +57,7 @@ func (c *CrawlerMessageItem) FileName() (string, error) {
 		return "", err
 	}
 
-	fileName += urlParts.Path
+	filePath += urlParts.Path
 
 	if c.IsHTML() {
 		r, err := regexp.Compile(`.(html|htm)$`)
@@ -67,39 +67,39 @@ func (c *CrawlerMessageItem) FileName() (string, error) {
 		}
 
 		switch {
-		case strings.HasSuffix(fileName, "/"):
-			fileName += "index.html"
-		case r.MatchString(fileName) == false: // extension not .html or .htm
-			fileName += ".html"
+		case strings.HasSuffix(filePath, "/"):
+			filePath += "index.html"
+		case r.MatchString(filePath) == false: // extension not .html or .htm
+			filePath += ".html"
 		}
 	}
 
-	fileName = sanitize.Path(fileName)
-	fileName = mirrorRoot + fileName
+	filePath = sanitize.Path(filePath)
+	filePath = mirrorRoot + filePath
 
-	return fileName, nil
+	return filePath, nil
 }
 
 func (c *CrawlerMessageItem) WriteToDisk() (string, error) {
-	fileName, err := c.FileName()
+	filePath, err := c.FilePath()
 	if err != nil {
 		return "", err
 	}
 
-	basePath := filepath.Dir(fileName)
+	basePath := filepath.Dir(filePath)
 	err = os.MkdirAll(basePath, 0755)
-
-	if err != nil {
-		return fileName, err
-	}
-
-	err = ioutil.WriteFile(fileName, c.HTMLBody, 0644)
 
 	if err != nil {
 		return filePath, err
 	}
 
-	return fileName, nil
+	err = ioutil.WriteFile(filePath, c.HTMLBody, 0644)
+
+	if err != nil {
+		return filePath, err
+	}
+
+	return filePath, nil
 }
 
 func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {

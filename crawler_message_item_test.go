@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var baseUrl, expectedFileName, host, mirrorRoot, testUrl, urlPath string
+	var baseUrl, expectedFilePath, host, mirrorRoot, testUrl, urlPath string
 	var delivery amqp.Delivery
 	var html []byte
 	var item *CrawlerMessageItem
@@ -23,7 +23,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		testUrl = baseUrl + urlPath
 		urlPath = "/government/organisations"
-		expectedFileName = mirrorRoot + urlPath + ".html"
+		expectedFilePath = mirrorRoot + urlPath + ".html"
 
 		delivery = amqp.Delivery{Body: []byte(testUrl)}
 		item = NewCrawlerMessageItem(delivery, host, []string{})
@@ -64,59 +64,59 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 	Describe("writing crawled content to disk", func() {
 		It("wrote something to disk", func() {
-			fileName, _ := item.WriteToDisk()
-			Expect(fileName).To(Equal(expectedFileName))
+			filePath, _ := item.WriteToDisk()
+			Expect(filePath).To(Equal(expectedFilePath))
 		})
 	})
 
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
 			testUrl = "https://user:pass@example.com:8080/test/url"
-			expectedFileName = mirrorRoot + "/test/url"
+			expectedFilePath = mirrorRoot + "/test/url"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("strips illegal characters", func() {
 			testUrl = baseUrl + "/../!t@e£s$t/u^r*l(){}"
-			expectedFileName = mirrorRoot + "/test/url"
+			expectedFilePath = mirrorRoot + "/test/url"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL references a directory", func() {
 			testUrl = baseUrl + "/this/url/has/a/trailing/slash/"
-			expectedFileName = mirrorRoot + "/this/url/has/a/trailing/slash/index.html"
+			expectedFilePath = mirrorRoot + "/this/url/has/a/trailing/slash/index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
 			testUrl = baseUrl
-			expectedFileName = mirrorRoot + "/index.html"
+			expectedFilePath = mirrorRoot + "/index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("omits URL query parameters", func() {
 			delivery := amqp.Delivery{Body: []byte(testUrl + "?foo=bar")}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 		It("omits URL fragments", func() {
 			delivery := amqp.Delivery{Body: []byte(testUrl + "#foo")}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
 
-			Expect(item.FileName()).To(Equal(expectedFileName))
+			Expect(item.FilePath()).To(Equal(expectedFilePath))
 		})
 	})
 
