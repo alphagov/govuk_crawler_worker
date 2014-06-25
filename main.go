@@ -59,10 +59,13 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	crawlItems := ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
-	extract := CrawlURL(crawlItems, crawler)
+	var acknowledge, crawlItems, extract <-chan *CrawlerMessageItem
+	publish := make(<-chan string, 100)
+
+	crawlItems = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
+	extract = CrawlURL(crawlItems, crawler)
 	extract = WriteItemToDisk(extract)
-	publish, acknowledge := ExtractURLs(extract)
+	publish, acknowledge = ExtractURLs(extract)
 
 	go PublishURLs(ttlHashSet, queueManager, publish)
 	go AcknowledgeItem(acknowledge, ttlHashSet)
