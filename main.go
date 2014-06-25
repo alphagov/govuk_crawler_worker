@@ -61,6 +61,7 @@ func main() {
 
 	crawlItems := ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
 	extract := CrawlURL(crawlItems, crawler)
+	extract = WriteItemToDisk(extract)
 	publish, acknowledge := ExtractURLs(extract)
 
 	go PublishURLs(ttlHashSet, queueManager, publish)

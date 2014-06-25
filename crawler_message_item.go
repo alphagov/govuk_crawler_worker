@@ -3,12 +3,9 @@ package main
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -76,28 +73,6 @@ func (c *CrawlerMessageItem) FilePath() (string, error) {
 
 	filePath = sanitize.Path(filePath)
 	filePath = mirrorRoot + filePath
-
-	return filePath, nil
-}
-
-func (c *CrawlerMessageItem) WriteToDisk() (string, error) {
-	filePath, err := c.FilePath()
-	if err != nil {
-		return "", err
-	}
-
-	basePath := filepath.Dir(filePath)
-	err = os.MkdirAll(basePath, 0755)
-
-	if err != nil {
-		return filePath, err
-	}
-
-	err = ioutil.WriteFile(filePath, c.HTMLBody, 0644)
-
-	if err != nil {
-		return filePath, err
-	}
 
 	return filePath, nil
 }

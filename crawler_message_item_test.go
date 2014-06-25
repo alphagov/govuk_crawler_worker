@@ -66,13 +66,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 		Expect(item.URL()).To(Equal(testUrl))
 	})
 
-	Describe("writing crawled content to disk", func() {
-		It("wrote something to disk", func() {
-			filePath, _ := item.WriteToDisk()
-			Expect(filePath).To(Equal(expectedFilePath))
-		})
-	})
-
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
 			testUrl = "https://user:pass@example.com:8080/test/url"

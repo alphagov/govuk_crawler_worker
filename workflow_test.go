@@ -135,6 +135,31 @@ var _ = Describe("Workflow", func() {
 			})
 		})
 
+		Describe("WriteItemToDisk", func() {
+			It("wrote something to disk", func() {
+				url := "https://www.gov.uk/extract-some-urls"
+				deliveryItem := &amqp.Delivery{Body: []byte(url)}
+				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(outbound)
+
+				Expect(len(extract)).To(Equal(0))
+
+				outbound <- item
+
+				Expect(<-extract).To(Equal(item))
+
+				filePath, _ := item.FilePath()
+				fileStat, _ := os.Stat(filePath)
+
+				Expect(fileStat).ToNot(BeNil())
+
+				close(outbound)
+			})
+		})
+
 		Describe("ExtractURLs", func() {
 			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
 				url := "https://www.gov.uk/extract-some-urls"
