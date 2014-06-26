@@ -2,9 +2,11 @@ package http_crawler
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 )
@@ -61,7 +63,16 @@ func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
 		return []byte{}, CannotCrawlURL
 	}
 
-	resp, err := http.Get(crawlURL)
+	req, err := http.NewRequest("GET", crawlURL, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	hostname, _ := os.Hostname()
+
+	req.Header.Set("User-Agent", fmt.Sprintf("GOV.UK Crawler Worker on host '%s'", hostname))
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return []byte{}, err
 	}

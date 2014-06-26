@@ -13,10 +13,11 @@ import (
 )
 
 func testServer(status int, body string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		fmt.Fprintln(w, body)
-	}))
+	}
+	return httptest.NewServer(http.HandlerFunc(handler))
 }
 
 var _ = Describe("Crawl", func() {
@@ -60,6 +61,23 @@ var _ = Describe("Crawl", func() {
 	})
 
 	Describe("Crawler.Crawl()", func() {
+		It("specifies a user agent when making a request", func() {
+			userAgentTestServer := func(httpStatus int) *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(httpStatus)
+					fmt.Fprintln(w, r.UserAgent())
+				}))
+			}
+
+			ts := userAgentTestServer(http.StatusOK)
+			defer ts.Close()
+
+			body, err := crawler.Crawl(ts.URL)
+
+			Expect(err).To(BeNil())
+			Expect(strings.HasPrefix((string(body)), "GOV.UK Crawler Worker")).To(BeTrue())
+		})
+
 		It("returns a body with no errors for 200 OK responses", func() {
 			ts := testServer(http.StatusOK, "Hello world")
 			defer ts.Close()
