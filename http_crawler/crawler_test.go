@@ -13,10 +13,11 @@ import (
 )
 
 func testServer(status int, body string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		fmt.Fprintln(w, body)
-	}))
+	}
+	return httptest.NewServer(http.HandlerFunc(handler))
 }
 
 var _ = Describe("Crawl", func() {
