@@ -60,6 +60,23 @@ var _ = Describe("Crawl", func() {
 	})
 
 	Describe("Crawler.Crawl()", func() {
+		It("specifies a user agent when making a request", func() {
+			testServer := func(httpStatus int) *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(httpStatus)
+					fmt.Fprintln(w, r.UserAgent())
+				}))
+			}
+
+			ts := testServer(http.StatusOK)
+			defer ts.Close()
+
+			body, err := crawler.Crawl(ts.URL)
+
+			Expect(err).To(BeNil())
+			Expect(strings.TrimSpace(string(body))).To(Equal("GOV.UK Crawler"))
+		})
+
 		It("returns a body with no errors for 200 OK responses", func() {
 			ts := testServer(http.StatusOK, "Hello world")
 			defer ts.Close()

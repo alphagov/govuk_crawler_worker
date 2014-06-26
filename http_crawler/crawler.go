@@ -61,7 +61,16 @@ func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
 		return []byte{}, CannotCrawlURL
 	}
 
-	resp, err := http.Get(crawlURL)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", crawlURL, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	req.Header.Set("User-Agent", "GOV.UK Crawler")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return []byte{}, err
 	}
