@@ -66,7 +66,7 @@ func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	req.Header.Set("User-Agent", "GOV.UK Crawler")
+	req.Header.Set("User-Agent", "GOV.UK Crawler Worker")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
