@@ -61,14 +61,14 @@ var _ = Describe("Crawl", func() {
 
 	Describe("Crawler.Crawl()", func() {
 		It("specifies a user agent when making a request", func() {
-			testServer := func(httpStatus int) *httptest.Server {
+			userAgentTestServer := func(httpStatus int) *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(httpStatus)
 					fmt.Fprintln(w, r.UserAgent())
 				}))
 			}
 
-			ts := testServer(http.StatusOK)
+			ts := userAgentTestServer(http.StatusOK)
 			defer ts.Close()
 
 			body, err := crawler.Crawl(ts.URL)
