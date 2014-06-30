@@ -10,16 +10,17 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/alphagov/govuk_crawler_worker/util"
 )
 
 var (
-	amqpAddr       = getEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
-	exchangeName   = getEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
-	queueName      = getEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
-	redisAddr      = getEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
-	redisKeyPrefix = getEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
-	rootURL        = getEnvDefault("ROOT_URL", "https://www.gov.uk/")
-	blacklistPaths = getEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	amqpAddr       = util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+	exchangeName   = util.GetEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
+	queueName      = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
+	redisAddr      = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
+	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
+	rootURL        = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 )
 
 func main() {
@@ -65,15 +66,6 @@ func main() {
 	go AcknowledgeItem(acknowledge, ttlHashSet)
 
 	<-dontQuit
-}
-
-func getEnvDefault(key string, defaultVal string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		return defaultVal
-	}
-
-	return val
 }
 
 func splitPaths(paths string) []string {
