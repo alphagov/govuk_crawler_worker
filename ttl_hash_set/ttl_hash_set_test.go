@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"time"
+
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 )
@@ -19,6 +21,88 @@ var _ = Describe("TTLHashSet", func() {
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
+	})
+
+	Describe("Reconnects", func() {
+		var (
+			proxy      *util.ProxyTCP
+			proxyAddr  string = "127.0.0.1:6380"
+			key        string = "reconnect"
+			ttlHashSet *TTLHashSet
+		)
+
+		BeforeEach(func() {
+			var err error
+			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
+
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr)
+
+			Expect(err).To(BeNil())
+			Expect(ttlHashSet).ToNot(BeNil())
+		})
+
+		AfterEach(func() {
+			Expect(ttlHashSet.Close()).To(BeNil())
+			Expect(purgeAllKeys(prefix, redisAddr))
+			proxy.Close()
+		})
+
+		It("should recover from connection errors", func() {
+			_, _ = ttlHashSet.Add(key)
+
+			proxy.KillConnected()
+			exists, err := ttlHashSet.Exists(key)
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
+			Expect(exists).To(Equal(false))
+
+			exists, err = ttlHashSet.Exists(key)
+
+			Expect(err).To(BeNil())
+			Expect(exists).To(Equal(true))
+		})
+
+		It("should block other operations until reconnected", func() {
+			var (
+				queries       int                = 3
+				results       chan time.Duration = make(chan time.Duration)
+				reconnectTime time.Duration      = 2 * time.Second
+
+				// Allow first reconnect to fail.
+				offsetWait time.Duration = reconnectTime / 10
+			)
+
+			_, _ = ttlHashSet.Add(key)
+			start := time.Now()
+			proxy.Close()
+			_, _ = ttlHashSet.Exists(key)
+
+			for i := 0; i < queries; i++ {
+				go func() {
+					exists, _ := ttlHashSet.Exists(key)
+					Expect(exists).To(Equal(true))
+					results <- time.Now().Sub(start)
+				}()
+			}
+
+			var err error
+			time.Sleep(offsetWait)
+			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
+
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			for i := 0; i < queries; i++ {
+				duration := <-results
+				Expect(duration.Seconds()).To(
+					BeNumerically("~", reconnectTime.Seconds(), 1e-2),
+				)
+			}
+		})
 	})
 
 	Describe("Working with a redis service", func() {

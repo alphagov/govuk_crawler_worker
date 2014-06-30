@@ -107,10 +107,6 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
-
-			if err.Error() == "use of closed network connection" {
-				log.Fatalln("No connection to Redis:", err)
-			}
 		}
 
 		if !exists {
@@ -136,13 +132,9 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {
-				if err.Error() == "use of closed network connection" {
-					log.Fatalln("No connection to Redis:", err)
-				} else {
-					item.Reject(true)
-					log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
-					continue
-				}
+				item.Reject(true)
+				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
+				continue
 			}
 
 			if !exists {
