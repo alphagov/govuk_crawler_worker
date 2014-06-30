@@ -67,7 +67,7 @@ var _ = Describe("QueueManager", func() {
 			queueManager.Close()
 		})
 
-		It("can consume and publish to the AMQL service", func() {
+		It("can consume and publish to the AMQP service", func() {
 			deliveries, err := queueManager.Consume()
 			Expect(err).To(BeNil())
 
