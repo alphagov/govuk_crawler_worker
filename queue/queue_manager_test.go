@@ -5,9 +5,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/alphagov/govuk_crawler_worker/util"
 )
 
 var _ = Describe("QueueManager", func() {
+	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+
 	It("returns an error if passed a bad connection address", func() {
 		queueManager, err := NewQueueManager(
 			"amqp://guest:guest@localhost:50000/",
@@ -21,7 +25,7 @@ var _ = Describe("QueueManager", func() {
 	It("provides a way of closing connections cleanly", func() {
 		exchangeName, queueName := "test-manager-exchange", "test-manager-queue"
 		queueManager, err := NewQueueManager(
-			"amqp://guest:guest@localhost:5672/",
+			amqpAddr,
 			exchangeName,
 			queueName)
 
@@ -48,7 +52,7 @@ var _ = Describe("QueueManager", func() {
 
 		BeforeEach(func() {
 			queueManager, queueManagerErr = NewQueueManager(
-				"amqp://guest:guest@localhost:5672/",
+				amqpAddr,
 				exchangeName,
 				queueName)
 

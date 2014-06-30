@@ -6,10 +6,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 )
 
 var _ = Describe("TTLHashSet", func() {
+	redisAddr := util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	prefix := "govuk_mirror_crawler_test"
 
 	It("returns an error when asking for a TTLHashSet object that can't connect to redis", func() {
@@ -26,12 +28,12 @@ var _ = Describe("TTLHashSet", func() {
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, "127.0.0.1:6379")
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 		})
 
 		AfterEach(func() {
 			Expect(ttlHashSet.Close()).To(BeNil())
-			Expect(purgeAllKeys(prefix, "127.0.0.1:6379"))
+			Expect(purgeAllKeys(prefix, redisAddr))
 		})
 
 		It("should connect successfully with no errors", func() {

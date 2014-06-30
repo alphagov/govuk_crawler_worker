@@ -15,12 +15,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 	"github.com/streadway/amqp"
 )
 
 var _ = Describe("Workflow", func() {
 	Describe("Acknowledging items", func() {
+		amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+		redisAddr := util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 		exchangeName, queueName := "test-workflow-exchange", "test-workflow-queue"
 		prefix := "govuk_mirror_crawler_workflow_test"
 
@@ -32,11 +35,11 @@ var _ = Describe("Workflow", func() {
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, "127.0.0.1:6379")
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
 
 			queueManager, queueManagerErr = NewQueueManager(
-				"amqp://guest:guest@localhost:5672/",
+				amqpAddr,
 				exchangeName,
 				queueName)
 
@@ -46,7 +49,7 @@ var _ = Describe("Workflow", func() {
 
 		AfterEach(func() {
 			Expect(ttlHashSet.Close()).To(BeNil())
-			Expect(purgeAllKeys(prefix, "127.0.0.1:6379")).To(BeNil())
+			Expect(purgeAllKeys(prefix, redisAddr)).To(BeNil())
 
 			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
 			Expect(err).To(BeNil())

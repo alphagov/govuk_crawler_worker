@@ -6,10 +6,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/streadway/amqp"
 )
 
 var _ = Describe("QueueConnection", func() {
+	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+
 	It("fails if it can't connect to an AMQP server", func() {
 		connection, err := NewQueueConnection("amqp://guest:guest@localhost:50000/")
 
@@ -24,7 +27,7 @@ var _ = Describe("QueueConnection", func() {
 		)
 
 		BeforeEach(func() {
-			connection, connectionErr = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+			connection, connectionErr = NewQueueConnection(amqpAddr)
 		})
 
 		AfterEach(func() {
@@ -102,11 +105,11 @@ var _ = Describe("QueueConnection", func() {
 		queueName := "test-crawler-queue"
 
 		BeforeEach(func() {
-			publisher, err = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+			publisher, err = NewQueueConnection(amqpAddr)
 			Expect(err).To(BeNil())
 			Expect(publisher).ToNot(BeNil())
 
-			consumer, err = NewQueueConnection("amqp://guest:guest@localhost:5672/")
+			consumer, err = NewQueueConnection(amqpAddr)
 			Expect(err).To(BeNil())
 			Expect(consumer).ToNot(BeNil())
 		})
