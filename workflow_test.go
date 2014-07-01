@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -136,7 +137,7 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("WriteItemToDisk", func() {
-			It("wrote something to disk", func() {
+			It("wrote the item to disk", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
@@ -152,9 +153,10 @@ var _ = Describe("Workflow", func() {
 				Expect(<-extract).To(Equal(item))
 
 				filePath, _ := item.FilePath()
-				fileStat, _ := os.Stat(filePath)
+				fileContent, err := ioutil.ReadFile(filePath)
 
-				Expect(fileStat).ToNot(BeNil())
+				Expect(err).To(BeNil())
+				Expect(fileContent).To(Equal(item.HTMLBody))
 
 				close(outbound)
 			})
