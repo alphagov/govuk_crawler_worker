@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -38,23 +37,19 @@ func (c *CrawlerMessageItem) URL() string {
 	return string(c.Body)
 }
 
-func (c *CrawlerMessageItem) FilePath() (string, error) {
+func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	var filePath string
-
-	if mirrorRoot == "" {
-		return "", errors.New("mirrorRoot not defined")
-	}
-
-	if strings.HasSuffix(mirrorRoot, "/") == false {
-		filePath = "/"
-	}
 
 	urlParts, err := url.Parse(c.URL())
 	if err != nil {
 		return "", err
 	}
 
-	filePath += urlParts.Path
+	filePath = urlParts.Path
+
+	if strings.HasPrefix(filePath, "/") == false {
+		filePath = "/" + filePath
+	}
 
 	if c.IsHTML() {
 		r, err := regexp.Compile(`.(html|htm)$`)
@@ -72,7 +67,6 @@ func (c *CrawlerMessageItem) FilePath() (string, error) {
 	}
 
 	filePath = sanitize.Path(filePath)
-	filePath = mirrorRoot + filePath
 
 	return filePath, nil
 }

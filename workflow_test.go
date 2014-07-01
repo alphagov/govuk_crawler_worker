@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -152,7 +153,9 @@ var _ = Describe("Workflow", func() {
 
 				Expect(<-extract).To(Equal(item))
 
-				filePath, _ := item.FilePath()
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+
 				fileContent, err := ioutil.ReadFile(filePath)
 
 				Expect(err).To(BeNil())

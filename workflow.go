@@ -81,12 +81,14 @@ func WriteItemToDisk(crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMes
 		extract chan<- *CrawlerMessageItem,
 	) {
 		for item := range crawl {
-			filePath, err := item.FilePath()
+			relativeFilePath, err := item.RelativeFilePath()
+
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				log.Println("Couldn't write to disk (rejecting):", err)
 			}
 
+			filePath := filepath.Join(mirrorRoot, relativeFilePath)
 			basePath := filepath.Dir(filePath)
 			err = os.MkdirAll(basePath, 0755)
 
