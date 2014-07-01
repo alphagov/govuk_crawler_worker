@@ -107,7 +107,6 @@ func WriteItemToDisk(crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMes
 	}
 
 	go writeLoop(crawlChannel, extractChannel)
-	go writeLoop(crawlChannel, extractChannel)
 
 	return extractChannel
 }
