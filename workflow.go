@@ -73,7 +73,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 	return extractChannel
 }
 
-func WriteItemToDisk(crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMessageItem {
+func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMessageItem {
 	extractChannel := make(chan *CrawlerMessageItem, 2)
 
 	writeLoop := func(
@@ -88,7 +88,7 @@ func WriteItemToDisk(crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMes
 				log.Println("Couldn't write to disk (rejecting):", err)
 			}
 
-			filePath := filepath.Join(mirrorRoot, relativeFilePath)
+			filePath := filepath.Join(basePath, relativeFilePath)
 			basePath := filepath.Dir(filePath)
 			err = os.MkdirAll(basePath, 0755)
 

@@ -64,7 +64,7 @@ func main() {
 
 	itemToCrawl = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
 	itemToPersist = CrawlURL(itemToCrawl, crawler)
-	itemToParse = WriteItemToDisk(itemToPersist)
+	itemToParse = WriteItemToDisk(mirrorRoot, itemToPersist)
 	itemToPublish, itemToAcknowledge = ExtractURLs(itemToParse)
 
 	go PublishURLs(ttlHashSet, queueManager, itemToPublish)

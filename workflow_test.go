@@ -145,7 +145,7 @@ var _ = Describe("Workflow", func() {
 				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
-				extract := WriteItemToDisk(outbound)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
 
 				Expect(len(extract)).To(Equal(0))
 
