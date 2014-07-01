@@ -66,7 +66,7 @@ func main() {
 	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
 	publishChan := make(<-chan string, 100)
 
-	crawlChan = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
+	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths))
 	persistChan = CrawlURL(crawlChan, crawler)
 	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
 	publishChan, acknowledgeChan = ExtractURLs(parseChan)

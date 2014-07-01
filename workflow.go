@@ -134,8 +134,8 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 
 			log.Println("Extracted URLs:", len(urls))
 
-			for _, url := range urls {
-				publish <- url
+			for _, u := range urls {
+				publish <- u.String()
 			}
 
 			acknowledge <- item
@@ -164,7 +164,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 	}
 }
 
-func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
+func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL string, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
 	outboundChannel := make(chan *CrawlerMessageItem, 2)
 
 	readLoop := func(
@@ -174,7 +174,8 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set
 		blacklistPaths []string,
 	) {
 		for item := range inbound {
-			message := NewCrawlerMessageItem(item, "", blacklistPaths)
+			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
+			log.Println(rootURL)
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {

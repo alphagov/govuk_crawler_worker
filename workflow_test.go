@@ -88,7 +88,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 
 				for item := range deliveries {
-					outbound <- NewCrawlerMessageItem(item, "www.gov.uk", []string{})
+					outbound <- NewCrawlerMessageItem(item, "https://www.gov.uk/", []string{})
 					break
 				}
 
@@ -171,7 +171,7 @@ var _ = Describe("Workflow", func() {
 			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
-				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item := NewCrawlerMessageItem(*deliveryItem, "https://www.gov.uk/", []string{})
 				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -251,10 +251,11 @@ var _ = Describe("Workflow", func() {
 
 		Describe("ReadFromQueue", func() {
 			It("provides a way of converting AMQP bodies to CrawlerMessageItems", func() {
+				rootURL := "https://www.foo.com/"
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := ReadFromQueue(deliveries, ttlHashSet, []string{})
+				outbound := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{})
 				Expect(len(outbound)).To(Equal(0))
 
 				url := "https://www.foo.com/bar"

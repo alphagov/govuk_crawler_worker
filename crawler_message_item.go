@@ -17,14 +17,20 @@ type CrawlerMessageItem struct {
 	amqp.Delivery
 	HTMLBody []byte
 
-	host           string
+	rootURL        *url.URL
 	blacklistPaths []string
 }
 
-func NewCrawlerMessageItem(delivery amqp.Delivery, host string, blacklistPaths []string) *CrawlerMessageItem {
+func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL string, blacklistPaths []string) *CrawlerMessageItem {
+	parsedRootURL, err := url.Parse(rootURL)
+
+	if err != nil {
+		log.Fatal("rootURL is not valid:", rootURL, err)
+	}
+
 	return &CrawlerMessageItem{
 		Delivery:       delivery,
-		host:           host,
+		rootURL:        parsedRootURL,
 		blacklistPaths: blacklistPaths,
 	}
 }
@@ -68,12 +74,12 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	return filePath, nil
 }
 
-func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {
-	urls := []string{}
+func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
+	returnUrls := []*url.URL{}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.HTMLBody))
 	if err != nil {
-		return urls, err
+		return returnUrls, err
 	}
 
 	urlElementMatches := [][]string{
@@ -83,50 +89,99 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {
 		[]string{"script", "src"},
 	}
 
+	var hrefs []string
+	var urls []*url.URL
+
 	for _, attr := range urlElementMatches {
 		element, attr := attr[0], attr[1]
-		urls = append(urls, findByElementAttribute(document, c.host, c.blacklistPaths, element, attr)...)
+
+		hrefs = findHrefsByElementAttribute(document, element, attr)
+		urls, err = parseUrls(hrefs)
+
+		if err != nil {
+			return returnUrls, err
+		}
+
+		urls = convertUrlsToAbsolute(c.rootURL, urls)
+		urls = filterUrlsByHost(c.rootURL.Host, urls)
+		urls = filterBlacklistedUrls(c.blacklistPaths, urls)
+
+		returnUrls = append(returnUrls, urls...)
 	}
 
-	return urls, err
+	return returnUrls, err
 }
 
-func findByElementAttribute(
+func parseUrls(urls []string) ([]*url.URL, error) {
+	var returnUrls []*url.URL
+	var err error
+
+	for _, u := range urls {
+		u, err := url.Parse(u)
+		if err != nil {
+			return returnUrls, err
+		}
+		returnUrls = append(returnUrls, u)
+	}
+
+	return returnUrls, err
+}
+
+func convertUrlsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
+	var returnUrls []*url.URL
+
+	for _, u := range urls {
+		absUrl := rootURL.ResolveReference(u)
+		returnUrls = append(returnUrls, absUrl)
+	}
+
+	return returnUrls
+}
+
+func filterUrlsByHost(host string, urls []*url.URL) []*url.URL {
+	var returnUrls []*url.URL
+
+	for _, u := range urls {
+		if u.Host == host {
+			returnUrls = append(returnUrls, u)
+		}
+	}
+
+	return returnUrls
+}
+
+func filterBlacklistedUrls(blacklistedPaths []string, urls []*url.URL) []*url.URL {
+	var returnUrls []*url.URL
+
+	for _, u := range urls {
+		if !isBlacklistedPath(u.Path, blacklistedPaths) {
+			returnUrls = append(returnUrls, u)
+		}
+	}
+
+	return returnUrls
+}
+
+func findHrefsByElementAttribute(
 	document *goquery.Document,
-	host string,
-	blacklistPaths []string,
 	element string,
 	attr string) []string {
 
-	urls := []string{}
+	hrefs := []string{}
 
 	document.Find(element).Each(func(_ int, element *goquery.Selection) {
-		href, exists := element.Attr(attr)
+		href, _ := element.Attr(attr)
 		unescapedHref, _ := url.QueryUnescape(href)
 		trimmedHref := strings.TrimSpace(unescapedHref)
-
-		u, err := url.Parse(trimmedHref)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if exists && len(trimmedHref) > 0 && !isBlacklistedPath(trimmedHref, blacklistPaths) {
-			if u.Host == host {
-				urls = append(urls, trimmedHref)
-			}
-
-			if u.Host == "" && trimmedHref[0] == '/' {
-				urls = append(urls, "http://"+host+trimmedHref)
-			}
-		}
+		hrefs = append(hrefs, trimmedHref)
 	})
 
-	return urls
+	return hrefs
 }
 
-func isBlacklistedPath(url string, blacklistedPaths []string) bool {
-	for _, path := range blacklistedPaths {
-		if strings.Contains(url, path) {
+func isBlacklistedPath(path string, blacklistedPaths []string) bool {
+	for _, blacklistedPath := range blacklistedPaths {
+		if strings.HasPrefix(path, blacklistedPath) {
 			return true
 		}
 	}
