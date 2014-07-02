@@ -26,7 +26,7 @@ var (
 
 func main() {
 	if mirrorRoot == "" {
-		panic("MIRROR_ROOT environment variable not set")
+		log.Fatal("MIRROR_ROOT environment variable not set")
 	}
 
 	if os.Getenv("GOMAXPROCS") == "" {
