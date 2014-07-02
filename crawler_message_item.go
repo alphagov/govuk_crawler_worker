@@ -63,10 +63,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = sanitize.Path(filePath)
-
-	if strings.HasPrefix(filePath, "/") {
-		filePath = filePath[1:len(filePath)]
-	}
+	filePath = strings.TrimPrefix(filePath, "/")
 
 	return filePath, nil
 }
