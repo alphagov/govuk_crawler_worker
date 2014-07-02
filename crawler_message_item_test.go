@@ -128,7 +128,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			Expect(err).To(BeNil())
 			Expect(len(urls)).To(Equal(1))
-			Expect(urls).To(ContainElement("http://www.foo.com/foo/bar"))
+			Expect(urls).To(ContainElement("https://www.foo.com/foo/bar"))
 		})
 	})
 

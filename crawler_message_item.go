@@ -83,7 +83,7 @@ func findByElementAttribute(
 			}
 
 			if u.Host == "" && trimmedHref[0] == '/' {
-				urls = append(urls, "http://"+host+trimmedHref)
+				urls = append(urls, "https://"+host+trimmedHref)
 			}
 		}
 	})
