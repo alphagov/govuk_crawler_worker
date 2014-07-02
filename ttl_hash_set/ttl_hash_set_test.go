@@ -25,10 +25,12 @@ var _ = Describe("TTLHashSet", func() {
 
 	Describe("Reconnects", func() {
 		var (
-			proxy      *util.ProxyTCP
-			proxyAddr  string = "127.0.0.1:6380"
-			key        string = "reconnect"
-			ttlHashSet *TTLHashSet
+			proxy         *util.ProxyTCP
+			proxyAddr     string = "127.0.0.1:6380"
+			key           string = "reconnect"
+			ttlHashSet    *TTLHashSet
+			reconnectTime time.Duration = 2 * time.Second
+			delayBetween  time.Duration = reconnectTime / 10
 		)
 
 		BeforeEach(func() {
@@ -60,48 +62,48 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
 			Expect(exists).To(Equal(false))
 
+			time.Sleep(delayBetween) // Allow other goroutine to reconnect.
 			exists, err = ttlHashSet.Exists(key)
 
 			Expect(err).To(BeNil())
 			Expect(exists).To(Equal(true))
 		})
 
-		It("should block other operations until reconnected", func() {
-			var (
-				queries       int                = 3
-				results       chan time.Duration = make(chan time.Duration)
-				reconnectTime time.Duration      = 2 * time.Second
-
-				// Allow first reconnect to fail.
-				offsetWait time.Duration = reconnectTime / 10
-			)
-
+		It("should return errors until reconnected", func() {
 			_, _ = ttlHashSet.Add(key)
-			start := time.Now()
 			proxy.Close()
-			_, _ = ttlHashSet.Exists(key)
 
-			for i := 0; i < queries; i++ {
-				go func() {
-					exists, _ := ttlHashSet.Exists(key)
-					Expect(exists).To(Equal(true))
-					results <- time.Now().Sub(start)
-				}()
-			}
+			start := time.Now()
+			exists, err := ttlHashSet.Exists(key)
 
-			var err error
-			time.Sleep(offsetWait)
+			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
+			Expect(exists).To(Equal(false))
+
+			time.Sleep(delayBetween) // Allow first reconnect to fail.
 			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
 
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			for i := 0; i < queries; i++ {
-				duration := <-results
-				Expect(duration.Seconds()).To(
-					BeNumerically("~", reconnectTime.Seconds(), 1e-2),
-				)
+			errorCount := 0
+			for time.Since(start) < reconnectTime {
+				exists, err := ttlHashSet.Exists(key)
+
+				Expect(err).To(MatchError("use of closed network connection"))
+				Expect(exists).To(Equal(false))
+
+				time.Sleep(delayBetween)
+				errorCount++
 			}
+
+			// Subtract one for the error and sleep before we restart ProxyTCP.
+			expectedErrors := int((reconnectTime / delayBetween) - 1)
+			Expect(errorCount).To(BeNumerically("~", expectedErrors, 2))
+
+			exists, err = ttlHashSet.Exists(key)
+
+			Expect(err).To(BeNil())
+			Expect(exists).To(Equal(true))
 		})
 	})
 

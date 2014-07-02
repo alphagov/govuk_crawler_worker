@@ -5,16 +5,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 )
 
 const WaitBetweenReconnect = 2 * time.Second
 
 type TTLHashSet struct {
-	addr   string
-	client *redis.Client
-	mutex  sync.Mutex
-	prefix string
+	addr    string
+	client  *redis.Client
+	mutex   sync.Mutex
+	prefix  string
+	rcMutex util.ReconnectMutex
 }
 
 func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
@@ -83,17 +85,22 @@ func (t *TTLHashSet) Ping() (string, error) {
 	return ping, err
 }
 
-// Reconnect initiates a new connection to the server. It will return
-// immediately after locking the mutex, but other operations will be blocked
-// until the reconnect is successful (preventing further errors and
-// reconnects)
+// Reconnect asynchronously initiates a new connection to the server if
+// there's not already one in progress. Other operations will continue to
+// return errors until this has succeeded.
 func (t *TTLHashSet) Reconnect() {
-	t.mutex.Lock()
+	if t.rcMutex.Check() {
+		return
+	}
 
+	t.rcMutex.Update(true)
 	go func() {
+		defer t.rcMutex.Update(false)
+
 		for {
 			client, err := redis.Dial("tcp", t.addr)
 			if err == nil {
+				t.mutex.Lock()
 				t.client = client
 				t.mutex.Unlock()
 				return

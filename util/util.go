@@ -16,6 +16,25 @@ func GetEnvDefault(key string, defaultVal string) string {
 	return val
 }
 
+type ReconnectMutex struct {
+	mutex        sync.RWMutex
+	reconnecting bool
+}
+
+func (r *ReconnectMutex) Check() bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return r.reconnecting
+}
+
+func (r *ReconnectMutex) Update(state bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.reconnecting = state
+}
+
 // ProxyTCP is a basic TCP proxy which can terminate connections. It can be
 // used to test reconnect behaviour.
 type ProxyTCP struct {
