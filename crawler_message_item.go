@@ -47,10 +47,6 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 
 	filePath = urlParts.Path
 
-	if strings.HasPrefix(filePath, "/") == false {
-		filePath = "/" + filePath
-	}
-
 	if c.IsHTML() {
 		r, err := regexp.Compile(`.(html|htm)$`)
 
@@ -67,6 +63,10 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = sanitize.Path(filePath)
+
+	if strings.HasPrefix(filePath, "/") {
+		filePath = filePath[1:len(filePath)]
+	}
 
 	return filePath, nil
 }

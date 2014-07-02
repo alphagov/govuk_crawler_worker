@@ -24,7 +24,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		testUrl = baseUrl + urlPath
 		urlPath = "/government/organisations"
-		expectedFilePath = urlPath + ".html"
+		expectedFilePath = "government/organisations.html"
 
 		delivery = amqp.Delivery{Body: []byte(testUrl)}
 		item = NewCrawlerMessageItem(delivery, host, []string{})
@@ -70,23 +70,25 @@ var _ = Describe("CrawlerMessageItem", func() {
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
 			testUrl = "https://user:pass@example.com:8080/test/url"
-			expectedFilePath = "/test/url"
+			expectedFilePath = "test/url.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
 
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("strips illegal characters", func() {
 			testUrl = baseUrl + "/../!T@e£s$t/U^R*L(){}"
-			expectedFilePath = "/test/url"
+			expectedFilePath = "test/url.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
 
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL references a directory", func() {
 			testUrl = baseUrl + "/this/url/has/a/trailing/slash/"
-			expectedFilePath = "/this/url/has/a/trailing/slash/index.html"
+			expectedFilePath = "this/url/has/a/trailing/slash/index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
@@ -94,8 +96,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
-			testUrl = baseUrl
-			expectedFilePath = "/index.html"
+			testUrl = baseUrl + "/"
+			expectedFilePath = "index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, host, []string{})
 			item.HTMLBody = html
