@@ -25,6 +25,10 @@ var (
 )
 
 func main() {
+	if mirrorRoot == "" {
+		panic("MIRROR_ROOT environment variable not set")
+	}
+
 	if os.Getenv("GOMAXPROCS") == "" {
 		// Use all available cores if not otherwise specified
 		runtime.GOMAXPROCS(runtime.NumCPU())
