@@ -16,10 +16,10 @@ third_party/src/$(REPO_PATH):
 test:
 	go run third_party.go test -v \
 		$(REPO_PATH) \
-		$(REPO_PATH)/util \
 		$(REPO_PATH)/http_crawler \
 		$(REPO_PATH)/queue \
 		$(REPO_PATH)/ttl_hash_set \
+		$(REPO_PATH)/util \
 
 build:
 	go run third_party.go build -o $(BINARY)
