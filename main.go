@@ -59,16 +59,16 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	var itemToAcknowledge, itemToCrawl, itemToPersist, itemToParse <-chan *CrawlerMessageItem
-	itemToPublish := make(<-chan string, 100)
+	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
+	publishChan := make(<-chan string, 100)
 
-	itemToCrawl = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
-	itemToPersist = CrawlURL(itemToCrawl, crawler)
-	itemToParse = WriteItemToDisk(mirrorRoot, itemToPersist)
-	itemToPublish, itemToAcknowledge = ExtractURLs(itemToParse)
+	crawlChan = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
+	persistChan = CrawlURL(crawlChan, crawler)
+	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
+	publishChan, acknowledgeChan = ExtractURLs(parseChan)
 
-	go PublishURLs(ttlHashSet, queueManager, itemToPublish)
-	go AcknowledgeItem(itemToAcknowledge, ttlHashSet)
+	go PublishURLs(ttlHashSet, queueManager, publishChan)
+	go AcknowledgeItem(acknowledgeChan, ttlHashSet)
 
 	<-dontQuit
 }
