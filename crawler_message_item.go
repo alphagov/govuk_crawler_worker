@@ -57,7 +57,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 		switch {
 		case strings.HasSuffix(filePath, "/"):
 			filePath += "index.html"
-		case r.MatchString(filePath) == false: // extension not .html or .htm
+		case !r.MatchString(filePath): // extension not .html or .htm
 			filePath += ".html"
 		}
 	}
