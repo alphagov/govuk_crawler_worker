@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"time"
+
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 )
@@ -19,6 +21,90 @@ var _ = Describe("TTLHashSet", func() {
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
+	})
+
+	Describe("Reconnects", func() {
+		var (
+			proxy         *util.ProxyTCP
+			proxyAddr     string = "127.0.0.1:6380"
+			key           string = "reconnect"
+			ttlHashSet    *TTLHashSet
+			reconnectTime time.Duration = 2 * time.Second
+			delayBetween  time.Duration = reconnectTime / 10
+		)
+
+		BeforeEach(func() {
+			var err error
+			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
+
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr)
+
+			Expect(err).To(BeNil())
+			Expect(ttlHashSet).ToNot(BeNil())
+		})
+
+		AfterEach(func() {
+			Expect(ttlHashSet.Close()).To(BeNil())
+			Expect(purgeAllKeys(prefix, redisAddr))
+			proxy.Close()
+		})
+
+		It("should recover from connection errors", func() {
+			_, _ = ttlHashSet.Add(key)
+
+			proxy.KillConnected()
+			exists, err := ttlHashSet.Exists(key)
+
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
+			Expect(exists).To(Equal(false))
+
+			time.Sleep(delayBetween) // Allow other goroutine to reconnect.
+			exists, err = ttlHashSet.Exists(key)
+
+			Expect(err).To(BeNil())
+			Expect(exists).To(Equal(true))
+		})
+
+		It("should return errors until reconnected", func() {
+			_, _ = ttlHashSet.Add(key)
+			proxy.Close()
+
+			start := time.Now()
+			exists, err := ttlHashSet.Exists(key)
+
+			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
+			Expect(exists).To(Equal(false))
+
+			time.Sleep(delayBetween) // Allow first reconnect to fail.
+			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
+
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			errorCount := 0
+			for time.Since(start) < reconnectTime {
+				exists, err := ttlHashSet.Exists(key)
+
+				Expect(err).To(MatchError("use of closed network connection"))
+				Expect(exists).To(Equal(false))
+
+				time.Sleep(delayBetween)
+				errorCount++
+			}
+
+			// Subtract one for the error and sleep before we restart ProxyTCP.
+			expectedErrors := int((reconnectTime / delayBetween) - 1)
+			Expect(errorCount).To(BeNumerically("~", expectedErrors, 2))
+
+			exists, err = ttlHashSet.Exists(key)
+
+			Expect(err).To(BeNil())
+			Expect(exists).To(Equal(true))
+		})
 	})
 
 	Describe("Working with a redis service", func() {
