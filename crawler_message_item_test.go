@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"log"
+
 	. "github.com/alphagov/govuk_crawler_worker"
 
 	. "github.com/onsi/ginkgo"
@@ -19,6 +21,10 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 	BeforeEach(func() {
 		mirrorRoot = os.Getenv("MIRROR_ROOT")
+		if mirrorRoot == "" {
+			log.Fatal("MIRROR_ROOT environment variable not set")
+		}
+
 		host = "www.gov.uk"
 		baseUrl = "https://" + host
 

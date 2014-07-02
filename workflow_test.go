@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -41,6 +42,9 @@ var _ = Describe("Workflow", func() {
 
 		BeforeEach(func() {
 			mirrorRoot = os.Getenv("MIRROR_ROOT")
+			if mirrorRoot == "" {
+				log.Fatal("MIRROR_ROOT environment variable not set")
+			}
 
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
