@@ -86,6 +86,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't write to disk (rejecting):", err)
+				continue
 			}
 
 			filePath := filepath.Join(basePath, relativeFilePath)
@@ -95,6 +96,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				continue
 			}
 
 			err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
@@ -102,6 +104,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				continue
 			}
 
 			extract <- item
