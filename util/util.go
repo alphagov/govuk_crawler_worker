@@ -96,8 +96,8 @@ func (p *ProxyTCP) Close() {
 
 func (p *ProxyTCP) KillConnected() {
 	p.Lock()
+	defer p.Unlock()
 	for _, conn := range p.conns {
 		conn.Close()
 	}
-	p.Unlock()
 }
