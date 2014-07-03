@@ -1,7 +1,7 @@
 package main_test
 
 import (
-	"log"
+	"io/ioutil"
 
 	. "github.com/alphagov/govuk_crawler_worker"
 
@@ -16,13 +16,15 @@ import (
 var _ = Describe("CrawlerMessageItem", func() {
 	var baseUrl, expectedFilePath, host, mirrorRoot, testUrl, urlPath string
 	var delivery amqp.Delivery
+	var err error
 	var html []byte
 	var item *CrawlerMessageItem
 
 	BeforeEach(func() {
 		mirrorRoot = os.Getenv("MIRROR_ROOT")
 		if mirrorRoot == "" {
-			log.Fatal("MIRROR_ROOT environment variable not set")
+			mirrorRoot, err = ioutil.TempDir("", "crawler_message_item_test")
+			Expect(err).To(BeNil())
 		}
 
 		host = "www.gov.uk"
