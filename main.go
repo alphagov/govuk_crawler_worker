@@ -21,9 +21,14 @@ var (
 	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
 	rootURL        = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
 
 func main() {
+	if mirrorRoot == "" {
+		log.Fatal("MIRROR_ROOT environment variable not set")
+	}
+
 	if os.Getenv("GOMAXPROCS") == "" {
 		// Use all available cores if not otherwise specified
 		runtime.GOMAXPROCS(runtime.NumCPU())
@@ -58,12 +63,16 @@ func main() {
 
 	dontQuit := make(chan int)
 
-	crawlItems := ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
-	extract := CrawlURL(crawlItems, crawler)
-	publish, acknowledge := ExtractURLs(extract)
+	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
+	publishChan := make(<-chan string, 100)
 
-	go PublishURLs(ttlHashSet, queueManager, publish)
-	go AcknowledgeItem(acknowledge, ttlHashSet)
+	crawlChan = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
+	persistChan = CrawlURL(crawlChan, crawler)
+	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
+	publishChan, acknowledgeChan = ExtractURLs(parseChan)
+
+	go PublishURLs(ttlHashSet, queueManager, publishChan)
+	go AcknowledgeItem(acknowledgeChan, ttlHashSet)
 
 	<-dontQuit
 }

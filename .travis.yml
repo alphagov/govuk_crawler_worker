@@ -3,6 +3,9 @@ language: go
 go:
   - 1.2
 
+env:
+  - MIRROR_ROOT=/tmp/mirror
+
 services:
   - rabbitmq
   - redis-server

@@ -1,30 +1,63 @@
 package main_test
 
 import (
+	"log"
+
 	. "github.com/alphagov/govuk_crawler_worker"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"os"
+
 	"github.com/streadway/amqp"
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	delivery := amqp.Delivery{Body: []byte("https://www.gov.uk/")}
+	var baseUrl, expectedFilePath, host, mirrorRoot, testUrl, urlPath string
+	var delivery amqp.Delivery
+	var html []byte
+	var item *CrawlerMessageItem
+
+	BeforeEach(func() {
+		mirrorRoot = os.Getenv("MIRROR_ROOT")
+		if mirrorRoot == "" {
+			log.Fatal("MIRROR_ROOT environment variable not set")
+		}
+
+		host = "www.gov.uk"
+		baseUrl = "https://" + host
+
+		testUrl = baseUrl + urlPath
+		urlPath = "/government/organisations"
+		expectedFilePath = "government/organisations.html"
+
+		delivery = amqp.Delivery{Body: []byte(testUrl)}
+		item = NewCrawlerMessageItem(delivery, host, []string{})
+
+		html = []byte(`<html>
+<head><title>test</title</head>
+<body><h1>TEST</h1></body>
+</html>
+`)
+		item.HTMLBody = html
+	})
+
+	AfterEach(func() {
+		DeleteMirrorFilesFromDisk(mirrorRoot)
+	})
 
 	It("generates a CrawlerMessageItem object", func() {
-		Expect(NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})).
+		Expect(NewCrawlerMessageItem(delivery, host, []string{})).
 			ToNot(BeNil())
 	})
 
 	Describe("getting and setting the HTMLBody", func() {
 		It("can get the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
-			Expect(item.HTMLBody).To(BeNil())
+			Expect(item.HTMLBody).To(Equal(html))
 		})
 
 		It("can set the HTMLBody of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
 			item.HTMLBody = []byte("foo")
 
 			Expect(item.HTMLBody).To(Equal([]byte("foo")))
@@ -32,15 +65,65 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("is able to state whether the content type is HTML", func() {
-		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{})
-		item.HTMLBody = []byte(`
-<html>
-<head><title>test</title</head>
-<body><h1>TEST</h1></body>
-</html>
-`)
-
 		Expect(item.IsHTML()).To(BeTrue())
+	})
+
+	It("returns its URL", func() {
+		item := NewCrawlerMessageItem(delivery, host, []string{})
+		Expect(item.URL()).To(Equal(testUrl))
+	})
+
+	Describe("generating a sane filename", func() {
+		It("strips out the domain, protocol, auth and ports", func() {
+			testUrl = "https://user:pass@example.com:8080/test/url"
+			expectedFilePath = "test/url.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("strips illegal characters", func() {
+			testUrl = baseUrl + "/../!T@e£s$t/U^R*L(){}"
+			expectedFilePath = "test/url.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("adds an index.html suffix when URL references a directory", func() {
+			testUrl = baseUrl + "/this/url/has/a/trailing/slash/"
+			expectedFilePath = "this/url/has/a/trailing/slash/index.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
+			testUrl = baseUrl + "/"
+			expectedFilePath = "index.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("omits URL query parameters", func() {
+			delivery := amqp.Delivery{Body: []byte(testUrl + "?foo=bar")}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("omits URL fragments", func() {
+			delivery := amqp.Delivery{Body: []byte(testUrl + "#foo")}
+			item = NewCrawlerMessageItem(delivery, host, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
 	})
 
 	Describe("ExtractURLs", func() {
@@ -133,7 +216,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("removes paths that are blacklisted", func() {
-		item := NewCrawlerMessageItem(delivery, "www.gov.uk", []string{"/trade-tariff"})
+		item := NewCrawlerMessageItem(delivery, host, []string{"/trade-tariff"})
 		item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`)
 
 		urls, err := item.ExtractURLs()

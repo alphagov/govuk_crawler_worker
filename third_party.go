@@ -354,8 +354,8 @@ func bumpAll() {
 }
 
 var (
-	buildARCH   = flag.String("arch", runtime.GOARCH, "Architecture to build for.")
-	buildOS     = flag.String("os", runtime.GOOS, "Operating system to build for.")
+	buildARCH = flag.String("arch", runtime.GOARCH, "Architecture to build for.")
+	buildOS   = flag.String("os", runtime.GOOS, "Operating system to build for.")
 )
 
 func main() {

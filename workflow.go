@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -66,6 +69,49 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 
 	go crawlLoop(crawlChannel, extractChannel, crawler)
 	go crawlLoop(crawlChannel, extractChannel, crawler)
+
+	return extractChannel
+}
+
+func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <-chan *CrawlerMessageItem {
+	extractChannel := make(chan *CrawlerMessageItem, 2)
+
+	writeLoop := func(
+		crawl <-chan *CrawlerMessageItem,
+		extract chan<- *CrawlerMessageItem,
+	) {
+		for item := range crawl {
+			relativeFilePath, err := item.RelativeFilePath()
+
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't write to disk (rejecting):", err)
+				continue
+			}
+
+			filePath := filepath.Join(basePath, relativeFilePath)
+			basePath := filepath.Dir(filePath)
+			err = os.MkdirAll(basePath, 0755)
+
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				continue
+			}
+
+			err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
+
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				continue
+			}
+
+			extract <- item
+		}
+	}
+
+	go writeLoop(crawlChannel, extractChannel)
 
 	return extractChannel
 }

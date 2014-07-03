@@ -2,8 +2,11 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -14,6 +17,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"os"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
@@ -32,9 +37,15 @@ var _ = Describe("Workflow", func() {
 			queueManagerErr error
 			ttlHashSet      *TTLHashSet
 			ttlHashSetErr   error
+			mirrorRoot      string
 		)
 
 		BeforeEach(func() {
+			mirrorRoot = os.Getenv("MIRROR_ROOT")
+			if mirrorRoot == "" {
+				log.Fatal("MIRROR_ROOT environment variable not set")
+			}
+
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
 
@@ -59,6 +70,7 @@ var _ = Describe("Workflow", func() {
 			Expect(err).To(BeNil())
 
 			queueManager.Close()
+			DeleteMirrorFilesFromDisk(mirrorRoot)
 		})
 
 		Describe("AcknowledgeItem", func() {
@@ -125,6 +137,34 @@ var _ = Describe("Workflow", func() {
 				Expect((<-crawled).HTMLBody[0:25]).To(Equal([]byte(body)))
 
 				server.Close()
+				close(outbound)
+			})
+		})
+
+		Describe("WriteItemToDisk", func() {
+			It("wrote the item to disk", func() {
+				url := "https://www.gov.uk/extract-some-urls"
+				deliveryItem := &amqp.Delivery{Body: []byte(url)}
+				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+
+				Expect(len(extract)).To(Equal(0))
+
+				outbound <- item
+
+				Expect(<-extract).To(Equal(item))
+
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+
+				fileContent, err := ioutil.ReadFile(filePath)
+
+				Expect(err).To(BeNil())
+				Expect(fileContent).To(Equal(item.HTMLBody))
+
 				close(outbound)
 			})
 		})

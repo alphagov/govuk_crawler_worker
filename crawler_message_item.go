@@ -5,9 +5,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/kennygrant/sanitize"
 	"github.com/streadway/amqp"
 )
 
@@ -33,6 +35,37 @@ func (c *CrawlerMessageItem) IsHTML() bool {
 
 func (c *CrawlerMessageItem) URL() string {
 	return string(c.Body)
+}
+
+func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
+	var filePath string
+
+	urlParts, err := url.Parse(c.URL())
+	if err != nil {
+		return "", err
+	}
+
+	filePath = urlParts.Path
+
+	if c.IsHTML() {
+		r, err := regexp.Compile(`.(html|htm)$`)
+
+		if err != nil {
+			return "", err
+		}
+
+		switch {
+		case strings.HasSuffix(filePath, "/"):
+			filePath += "index.html"
+		case !r.MatchString(filePath): // extension not .html or .htm
+			filePath += ".html"
+		}
+	}
+
+	filePath = sanitize.Path(filePath)
+	filePath = strings.TrimPrefix(filePath, "/")
+
+	return filePath, nil
 }
 
 func (c *CrawlerMessageItem) ExtractURLs() ([]string, error) {
