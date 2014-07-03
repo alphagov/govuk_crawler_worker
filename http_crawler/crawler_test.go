@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -21,15 +22,12 @@ func testServer(status int, body string) *httptest.Server {
 }
 
 var _ = Describe("Crawl", func() {
-	var (
-		crawler    *Crawler
-		crawlerErr error
-	)
+	var crawler *Crawler
 
 	BeforeEach(func() {
-		crawler, crawlerErr = NewCrawler("http://127.0.0.1/")
+		rootURL, _ := url.Parse("http://127.0.0.1")
+		crawler = NewCrawler(rootURL)
 
-		Expect(crawlerErr).To(BeNil())
 		Expect(crawler).ToNot(BeNil())
 	})
 
@@ -45,17 +43,10 @@ var _ = Describe("Crawl", func() {
 	})
 
 	Describe("NewCrawler()", func() {
-		It("doesn't allow providing empty URLs", func() {
-			badCrawler, err := NewCrawler("")
-
-			Expect(err).ToNot(BeNil())
-			Expect(badCrawler).To(BeNil())
-		})
-
 		It("provides a new crawler that accepts the provided host", func() {
-			GOVUKCrawler, err := NewCrawler("https://www.gov.uk/")
+			rootURL, _ := url.Parse("https://www.gov.uk/")
+			GOVUKCrawler := NewCrawler(rootURL)
 
-			Expect(err).To(BeNil())
 			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
 		})
 	})
@@ -72,7 +63,8 @@ var _ = Describe("Crawl", func() {
 			ts := userAgentTestServer(http.StatusOK)
 			defer ts.Close()
 
-			body, err := crawler.Crawl(ts.URL)
+			testURL, _ := url.Parse(ts.URL)
+			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
 			Expect(strings.HasPrefix((string(body)), "GOV.UK Crawler Worker")).To(BeTrue())
@@ -82,14 +74,16 @@ var _ = Describe("Crawl", func() {
 			ts := testServer(http.StatusOK, "Hello world")
 			defer ts.Close()
 
-			body, err := crawler.Crawl(ts.URL)
+			testURL, _ := url.Parse(ts.URL)
+			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
 			Expect(strings.TrimSpace(string(body))).To(Equal("Hello world"))
 		})
 
 		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
-			body, err := crawler.Crawl("http://google.com/foo")
+			testURL, _ := url.Parse("http://www.google.com/foo")
+			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(Equal(CannotCrawlURL))
 			Expect(body).To(Equal([]byte{}))
@@ -100,7 +94,8 @@ var _ = Describe("Crawl", func() {
 				ts := testServer(429, "Too Many Requests")
 				defer ts.Close()
 
-				body, err := crawler.Crawl(ts.URL)
+				testURL, _ := url.Parse(ts.URL)
+				body, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequestError))
 				Expect(body).To(Equal([]byte{}))
@@ -110,7 +105,8 @@ var _ = Describe("Crawl", func() {
 				ts := testServer(http.StatusInternalServerError, "Internal Server Error")
 				defer ts.Close()
 
-				body, err := crawler.Crawl(ts.URL)
+				testURL, _ := url.Parse(ts.URL)
+				body, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequestError))
 				Expect(body).To(Equal([]byte{}))
@@ -120,7 +116,8 @@ var _ = Describe("Crawl", func() {
 				ts := testServer(http.StatusGatewayTimeout, "Gateway Timeout")
 				defer ts.Close()
 
-				body, err := crawler.Crawl(ts.URL)
+				testURL, _ := url.Parse(ts.URL)
+				body, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequestError))
 				Expect(body).To(Equal([]byte{}))

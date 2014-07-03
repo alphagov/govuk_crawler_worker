@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,16 +20,10 @@ type CrawlerMessageItem struct {
 	blacklistPaths []string
 }
 
-func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL string, blacklistPaths []string) *CrawlerMessageItem {
-	parsedRootURL, err := url.Parse(rootURL)
-
-	if err != nil {
-		log.Fatal("rootURL is not valid:", rootURL, err)
-	}
-
+func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL *url.URL, blacklistPaths []string) *CrawlerMessageItem {
 	return &CrawlerMessageItem{
 		Delivery:       delivery,
-		rootURL:        parsedRootURL,
+		rootURL:        rootURL,
 		blacklistPaths: blacklistPaths,
 	}
 }

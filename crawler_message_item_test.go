@@ -15,11 +15,12 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var rootURL, expectedFilePath, mirrorRoot, testUrl, urlPath string
+	var expectedFilePath, mirrorRoot, testUrl, urlPath string
 	var delivery amqp.Delivery
 	var err error
 	var html []byte
 	var item *CrawlerMessageItem
+	var rootURL *url.URL
 
 	BeforeEach(func() {
 		mirrorRoot = os.Getenv("MIRROR_ROOT")
@@ -28,8 +29,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 		}
 
-		rootURL = "https://www.gov.uk"
-		testUrl = rootURL + urlPath
+		rootURL, _ = url.Parse("https://www.gov.uk")
+		testUrl = rootURL.String() + urlPath
 		urlPath = "/government/organisations"
 		expectedFilePath = "government/organisations.html"
 
@@ -49,8 +50,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("generates a CrawlerMessageItem object", func() {
-		Expect(NewCrawlerMessageItem(delivery, rootURL, []string{})).
-			ToNot(BeNil())
+		Expect(NewCrawlerMessageItem(delivery, rootURL, []string{})).ToNot(BeNil())
 	})
 
 	Describe("getting and setting the HTMLBody", func() {
@@ -85,7 +85,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("strips illegal characters", func() {
-			testUrl = rootURL + "/../!T@e£s$t/U^R*L(){}"
+			testUrl = rootURL.String() + "/../!T@e£s$t/U^R*L(){}"
 			expectedFilePath = "test/url.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
@@ -94,7 +94,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL references a directory", func() {
-			testUrl = rootURL + "/this/url/has/a/trailing/slash/"
+			testUrl = rootURL.String() + "/this/url/has/a/trailing/slash/"
 			expectedFilePath = "this/url/has/a/trailing/slash/index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
@@ -103,7 +103,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
-			testUrl = rootURL + "/"
+			testUrl = rootURL.String() + "/"
 			expectedFilePath = "index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
@@ -128,13 +128,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	Describe("ExtractURLs", func() {
-		var item *CrawlerMessageItem
-
-		BeforeEach(func() {
-			delivery := amqp.Delivery{Body: []byte("https://www.foo.com/")}
-			item = NewCrawlerMessageItem(delivery, "https://www.foo.com/", []string{})
-		})
-
 		It("should return an empty array if it can't find any matching URLs", func() {
 			item.HTMLBody = []byte("")
 			urls, err := item.ExtractURLs()
@@ -144,26 +137,26 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("should extract all a[@href] URLs from a given HTML document", func() {
-			item.HTMLBody = []byte(`<div><a href="https://www.foo.com/"></a></div>`)
+			item.HTMLBody = []byte(`<div><a href="https://www.gov.uk/"></a></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.foo.com/")
+			expectedUrl, _ := url.Parse("https://www.gov.uk/")
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedUrl))
 		})
 
 		It("should extract all img[@src] URLs from a given HTML document", func() {
-			item.HTMLBody = []byte(`<div><img src="https://www.foo.com/image.png" /></div>`)
+			item.HTMLBody = []byte(`<div><img src="https://www.gov.uk/image.png" /></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.foo.com/image.png")
+			expectedUrl, _ := url.Parse("https://www.gov.uk/image.png")
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedUrl))
 		})
 
 		It("should extract all link[@href] URLs from a given HTML document", func() {
-			item.HTMLBody = []byte(`<head><link rel="icon" href="https://www.foo.com/favicon.ico"></head>`)
-			expectedUrl, _ := url.Parse("https://www.foo.com/favicon.ico")
+			item.HTMLBody = []byte(`<head><link rel="icon" href="https://www.gov.uk/favicon.ico"></head>`)
+			expectedUrl, _ := url.Parse("https://www.gov.uk/favicon.ico")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -172,9 +165,9 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("should extract all script[@src] URLs from a given HTML document", func() {
 			item.HTMLBody = []byte(
-				`<head><script type="text/javascript" src="https://www.foo.com/jq.js"></script></head>`)
+				`<head><script type="text/javascript" src="https://www.gov.uk/jq.js"></script></head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.foo.com/jq.js")
+			expectedUrl, _ := url.Parse("https://www.gov.uk/jq.js")
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedUrl))
@@ -183,12 +176,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("successfully extracts multiple matching URLs from the provided DOM", func() {
 			item.HTMLBody = []byte(
 				`<head>
-<script type="text/javascript" src="https://www.foo.com/jq.js"></script>
-<link rel="icon" href="https://www.foo.com/favicon.ico">
+<script type="text/javascript" src="https://www.gov.uk/jq.js"></script>
+<link rel="icon" href="https://www.gov.uk/favicon.ico">
 </head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl1, _ := url.Parse("https://www.foo.com/jq.js")
-			expectedUrl2, _ := url.Parse("https://www.foo.com/favicon.ico")
+			expectedUrl1, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedUrl2, _ := url.Parse("https://www.gov.uk/favicon.ico")
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedUrl1))
@@ -205,8 +198,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("will unescape URLs", func() {
-			item.HTMLBody = []byte(`<div><a href="http://www.foo.com/bar%20"></a></div>`)
-			expectedUrl, _ := url.Parse("http://www.foo.com/bar")
+			item.HTMLBody = []byte(`<div><a href="http://www.gov.uk/bar%20"></a></div>`)
+			expectedUrl, _ := url.Parse("http://www.gov.uk/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -215,7 +208,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("should extract relative URLs", func() {
 			item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="mailto:c@d.com">b</a></div>`)
-			expectedUrl, _ := url.Parse("https://www.foo.com/foo/bar")
+			expectedUrl, _ := url.Parse("https://www.gov.uk/foo/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
