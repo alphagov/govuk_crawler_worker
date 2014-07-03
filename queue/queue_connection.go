@@ -10,41 +10,52 @@ type QueueConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
 
+	url         string
 	notifyClose chan *amqp.Error
 }
 
 func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
-	connection, err := amqp.Dial(amqpURI)
+	queueConnection := &QueueConnection{
+		url: amqpURI,
+	}
+	err := queueConnection.Connect()
 	if err != nil {
 		return nil, err
+	}
+
+	return queueConnection, nil
+}
+
+func (c *QueueConnection) Connect() error {
+	connection, err := amqp.Dial(c.url)
+	if err != nil {
+		return err
 	}
 
 	channel, err := connection.Channel()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = channel.Qos(5, 0, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	queueConnection := &QueueConnection{
-		Connection:  connection,
-		Channel:     channel,
-		notifyClose: channel.NotifyClose(make(chan *amqp.Error)),
-	}
+	c.Connection = connection
+	c.Channel = channel
+	c.notifyClose = c.Channel.NotifyClose(make(chan *amqp.Error))
 
 	go func() {
 		select {
-		case e := <-queueConnection.notifyClose:
+		case e := <-c.notifyClose:
 			if e == amqp.ErrClosed {
 				log.Fatal(e)
 			}
 		}
 	}()
 
-	return queueConnection, nil
+	return nil
 }
 
 func (c *QueueConnection) Close() error {
