@@ -3,22 +3,18 @@ package main_test
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
-
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
 	. "github.com/alphagov/govuk_crawler_worker/queue"
 	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"os"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
@@ -33,17 +29,19 @@ var _ = Describe("Workflow", func() {
 		prefix := "govuk_mirror_crawler_workflow_test"
 
 		var (
+			err             error
+			mirrorRoot      string
 			queueManager    *QueueManager
 			queueManagerErr error
 			ttlHashSet      *TTLHashSet
 			ttlHashSetErr   error
-			mirrorRoot      string
 		)
 
 		BeforeEach(func() {
 			mirrorRoot = os.Getenv("MIRROR_ROOT")
 			if mirrorRoot == "" {
-				log.Fatal("MIRROR_ROOT environment variable not set")
+				mirrorRoot, err = ioutil.TempDir("", "workflow_test")
+				Expect(err).To(BeNil())
 			}
 
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)

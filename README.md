@@ -18,12 +18,9 @@ To run this worker you will need:
 You can run the tests locally by running the following:
 
 ```bash
-export MIRROR_ROOT=${HOME}/path/to/mirror/root
 go get -v -t ./...
 go test -v ./...
 ```
-
-__Be aware that the `MIRROR_ROOT` directory will be deleted after each test runs.__
 
 Alternatively to localise the dependencies you can use `make`. This
 will use the `third_party.go` tool to vendorise dependencies into a
