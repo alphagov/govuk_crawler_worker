@@ -24,9 +24,12 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("Reconnects", func() {
 		var (
-			connection    *QueueConnection
-			proxy         *util.ProxyTCP
-			proxyAddr     string = "localhost:5673"
+			publisher    *QueueConnection
+			consumer     *QueueConnection
+			proxy        *util.ProxyTCP
+			proxyAddr    string = "localhost:5673"
+			exchangeName string = "test-crawler-exchange"
+			queueName    string = "test-crawler-queue"
 		)
 
 		BeforeEach(func() {
@@ -39,13 +42,54 @@ var _ = Describe("QueueConnection", func() {
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			connection, err = NewQueueConnection(proxyURL)
+			publisher, err = NewQueueConnection(proxyURL)
 			Expect(err).To(BeNil())
+			Expect(publisher).ToNot(BeNil())
+
+			consumer, err = NewQueueConnection(proxyURL)
+			Expect(err).To(BeNil())
+			Expect(consumer).ToNot(BeNil())
 		})
 
 		AfterEach(func() {
-			connection.Close()
-			proxy.Close()
+			defer consumer.Close()
+			defer publisher.Close()
+			defer proxy.Close()
+
+			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, false)
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
+
+			// Consumer cannot delete exchange unless we Cancel() or Close()
+			err = publisher.Channel.ExchangeDelete(exchangeName, false, false)
+			Expect(err).To(BeNil())
+		})
+
+		It("should reconnect on errors", func() {
+			var err error
+
+			err = consumer.ExchangeDeclare(exchangeName, "direct")
+			Expect(err).To(BeNil())
+
+			_, err = consumer.QueueDeclare(queueName)
+			Expect(err).To(BeNil())
+
+			err = consumer.BindQueueToExchange(queueName, exchangeName)
+			Expect(err).To(BeNil())
+
+			deliveries, err := consumer.Consume(queueName)
+			Expect(err).To(BeNil())
+
+			err = publisher.Publish(exchangeName, "#", "text/plain", "foo")
+			Expect(err).To(BeNil())
+
+			//proxy.KillConnected()
+
+			for d := range deliveries {
+				Expect(string(d.Body)).To(Equal("foo"))
+				d.Ack(false)
+				break
+			}
 		})
 	})
 
