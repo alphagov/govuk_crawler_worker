@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"syscall"
 
 	. "github.com/alphagov/govuk_crawler_worker/util"
@@ -15,34 +16,34 @@ import (
 )
 
 var _ = Describe("Util", func() {
-	const statusCode = http.StatusNoContent
-	var (
-		proxy        *ProxyTCP
-		remoteServer *httptest.Server
-		localURL     string
-	)
-
-	BeforeEach(func() {
-		remoteServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(statusCode)
-		}))
-		remoteURL, _ := url.Parse(remoteServer.URL)
-
-		var err error
-		proxy, err = NewProxyTCP("127.0.0.1:0", remoteURL.Host)
-
-		Expect(err).To(BeNil())
-		Expect(proxy).ToNot(BeNil())
-
-		localURL = fmt.Sprintf("http://%s", proxy.Addr())
-	})
-
-	AfterEach(func() {
-		remoteServer.Close()
-		proxy.Close()
-	})
-
 	Describe("ProxyTCP", func() {
+		const statusCode = http.StatusNoContent
+		var (
+			proxy        *ProxyTCP
+			remoteServer *httptest.Server
+			localURL     string
+		)
+
+		BeforeEach(func() {
+			remoteServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(statusCode)
+			}))
+			remoteURL, _ := url.Parse(remoteServer.URL)
+
+			var err error
+			proxy, err = NewProxyTCP("127.0.0.1:0", remoteURL.Host)
+
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			localURL = fmt.Sprintf("http://%s", proxy.Addr())
+		})
+
+		AfterEach(func() {
+			remoteServer.Close()
+			proxy.Close()
+		})
+
 		It("should proxy connections", func() {
 			resp, err := http.Get(localURL)
 
@@ -77,6 +78,21 @@ var _ = Describe("Util", func() {
 
 			Expect(netErr.Err).To(Equal(syscall.ECONNREFUSED))
 			Expect(resp).To(BeNil())
+		})
+	})
+
+	Describe("GetEnvDefault", func() {
+		It("will return the default value if no environment variable is set", func() {
+			Expect(GetEnvDefault("SOME_NON_EXISTENT_ENV_VAR", "foo")).To(Equal("foo"))
+		})
+
+		It("will return the environment variable value if it's set", func() {
+			env := "SOME_CUSTOM_CRAWLER_UTIL_ENV_VAR"
+			os.Setenv(env, "200")
+
+			Expect(GetEnvDefault(env, "foo")).To(Equal("200"))
+
+			os.Setenv(env, "")
 		})
 	})
 })
