@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"net/url"
+
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/streadway/amqp"
 )
@@ -18,6 +20,33 @@ var _ = Describe("QueueConnection", func() {
 
 		Expect(err).ToNot(BeNil())
 		Expect(connection).To(BeNil())
+	})
+
+	Describe("Reconnects", func() {
+		var (
+			connection    *QueueConnection
+			proxy         *util.ProxyTCP
+			proxyAddr     string = "localhost:5673"
+		)
+
+		BeforeEach(func() {
+			proxyDest, err := addrFromURL(amqpAddr)
+			Expect(err).To(BeNil())
+			proxyURL, err := urlChangeAddr(amqpAddr, proxyAddr)
+			Expect(err).To(BeNil())
+
+			proxy, err = util.NewProxyTCP(proxyAddr, proxyDest)
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			connection, err = NewQueueConnection(proxyURL)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			connection.Close()
+			proxy.Close()
+		})
 	})
 
 	Describe("Connecting to a running AMQP service", func() {
@@ -151,3 +180,24 @@ var _ = Describe("QueueConnection", func() {
 		})
 	})
 })
+
+// addrFromURL extracts the addr (host:port) from a URL string.
+func addrFromURL(URL string) (string, error) {
+	parsedURL, err := url.Parse(URL)
+	if err != nil {
+		return "", err
+	}
+
+	return parsedURL.Host, nil
+}
+
+// urlChangeAddr changes the addr (host:port) of a URL string.
+func urlChangeAddr(origURL, newHost string) (string, error) {
+	parsedURL, err := url.Parse(origURL)
+	if err != nil {
+		return "", err
+	}
+
+	parsedURL.Host = newHost
+	return parsedURL.String(), nil
+}
