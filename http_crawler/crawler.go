@@ -38,32 +38,18 @@ func RetryStatusCodes() []int {
 	return statusCodes
 }
 
-func NewCrawler(rootURL string) (*Crawler, error) {
-	if rootURL == "" {
-		return nil, errors.New("Cannot provide an empty root URL")
-	}
-
-	u, err := url.Parse(rootURL)
-	if err != nil {
-		return nil, err
-	}
-
+func NewCrawler(rootURL *url.URL) *Crawler {
 	return &Crawler{
-		RootURL: u,
-	}, nil
+		RootURL: rootURL,
+	}
 }
 
-func (c *Crawler) Crawl(crawlURL string) ([]byte, error) {
-	u, err := url.Parse(crawlURL)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	if !strings.HasPrefix(u.Host, c.RootURL.Host) {
+func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
+	if !strings.HasPrefix(crawlURL.Host, c.RootURL.Host) {
 		return []byte{}, CannotCrawlURL
 	}
 
-	req, err := http.NewRequest("GET", crawlURL, nil)
+	req, err := http.NewRequest("GET", crawlURL.String(), nil)
 	if err != nil {
 		return []byte{}, err
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -19,7 +20,7 @@ var (
 	queueName      = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
 	redisAddr      = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
-	rootURL        = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
@@ -27,6 +28,11 @@ var (
 func main() {
 	if mirrorRoot == "" {
 		log.Fatal("MIRROR_ROOT environment variable not set")
+	}
+
+	rootURL, err := url.Parse(rootURLString)
+	if err != nil {
+		log.Fatal("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
 	if os.Getenv("GOMAXPROCS") == "" {
@@ -49,10 +55,7 @@ func main() {
 	defer queueManager.Close()
 	log.Println("Connected to AMQP service:", queueManager)
 
-	crawler, err := http_crawler.NewCrawler(rootURL)
-	if err != nil {
-		log.Fatal("Couldn't generate Crawler:", err)
-	}
+	crawler := http_crawler.NewCrawler(rootURL)
 	log.Println("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()
@@ -66,7 +69,7 @@ func main() {
 	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
 	publishChan := make(<-chan string, 100)
 
-	crawlChan = ReadFromQueue(deliveries, ttlHashSet, splitPaths(blacklistPaths))
+	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths))
 	persistChan = CrawlURL(crawlChan, crawler)
 	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
 	publishChan, acknowledgeChan = ExtractURLs(parseChan)

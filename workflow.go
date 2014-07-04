@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -38,20 +39,25 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 		crawler *http_crawler.Crawler,
 	) {
 		for item := range crawl {
-			url := item.URL()
-			log.Println("Crawling URL:", url)
+			u, err := url.Parse(item.URL())
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
 
-			body, err := crawler.Crawl(url)
+			}
+			log.Println("Crawling URL:", u)
+
+			body, err := crawler.Crawl(u)
 			if err != nil {
 				if err == http_crawler.RetryRequestError {
 					item.Reject(true)
-					log.Println("Couldn't crawl (requeueing):", url, err)
+					log.Println("Couldn't crawl (requeueing):", u.String(), err)
 
 					// Back off from crawling for a few seconds.
 					time.Sleep(3 * time.Second)
 				} else {
 					item.Reject(false)
-					log.Println("Couldn't crawl (rejecting):", url, err)
+					log.Println("Couldn't crawl (rejecting):", u.String(), err)
 				}
 
 				continue
@@ -134,8 +140,8 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 
 			log.Println("Extracted URLs:", len(urls))
 
-			for _, url := range urls {
-				publish <- url
+			for _, u := range urls {
+				publish <- u.String()
 			}
 
 			acknowledge <- item
@@ -164,7 +170,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 	}
 }
 
-func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
+func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
 	outboundChannel := make(chan *CrawlerMessageItem, 2)
 
 	readLoop := func(
@@ -174,7 +180,8 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, ttlHashSet *ttl_hash_set
 		blacklistPaths []string,
 	) {
 		for item := range inbound {
-			message := NewCrawlerMessageItem(item, "", blacklistPaths)
+			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
+			log.Println(rootURL)
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {

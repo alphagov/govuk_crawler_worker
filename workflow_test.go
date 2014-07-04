@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -35,6 +36,7 @@ var _ = Describe("Workflow", func() {
 			queueManagerErr error
 			ttlHashSet      *TTLHashSet
 			ttlHashSetErr   error
+			rootURL         *url.URL
 		)
 
 		BeforeEach(func() {
@@ -43,6 +45,8 @@ var _ = Describe("Workflow", func() {
 				mirrorRoot, err = ioutil.TempDir("", "workflow_test")
 				Expect(err).To(BeNil())
 			}
+
+			rootURL, _ = url.Parse("https://www.gov.uk")
 
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
@@ -88,7 +92,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 
 				for item := range deliveries {
-					outbound <- NewCrawlerMessageItem(item, "www.gov.uk", []string{})
+					outbound <- NewCrawlerMessageItem(item, rootURL, []string{})
 					break
 				}
 
@@ -109,30 +113,27 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("CrawlURL", func() {
-			var (
-				crawler    *Crawler
-				crawlerErr error
-			)
+			var crawler *Crawler
 
 			BeforeEach(func() {
-				crawler, crawlerErr = NewCrawler("http://127.0.0.1/")
+				rootURL, _ = url.Parse("http://127.0.0.1")
+				crawler = NewCrawler(rootURL)
 
-				Expect(crawlerErr).To(BeNil())
 				Expect(crawler).ToNot(BeNil())
 			})
 
 			It("crawls a URL and assigns the body", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
-				body := `<a href="foo.com">bar</a>`
+				body := `<a href="gov.uk">bar</a>`
 				server := testServer(200, body)
 
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
-				outbound <- NewCrawlerMessageItem(*deliveryItem, "127.0.0.1", []string{})
+				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 
 				crawled := CrawlURL(outbound, crawler)
 
-				Expect((<-crawled).HTMLBody[0:25]).To(Equal([]byte(body)))
+				Expect((<-crawled).HTMLBody[0:24]).To(Equal([]byte(body)))
 
 				server.Close()
 				close(outbound)
@@ -143,7 +144,7 @@ var _ = Describe("Workflow", func() {
 			It("wrote the item to disk", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
-				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -171,7 +172,7 @@ var _ = Describe("Workflow", func() {
 			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
-				item := NewCrawlerMessageItem(*deliveryItem, "www.gov.uk", []string{})
+				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -254,10 +255,10 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := ReadFromQueue(deliveries, ttlHashSet, []string{})
+				outbound := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{})
 				Expect(len(outbound)).To(Equal(0))
 
-				url := "https://www.foo.com/bar"
+				url := "https://www.gov.uk/bar"
 				err = queueManager.Publish("#", "text/plain", url)
 				Expect(err).To(BeNil())
 
