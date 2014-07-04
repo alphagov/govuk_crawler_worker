@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"runtime"
@@ -22,6 +23,7 @@ var (
 	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
 	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	httpPort       = util.GetEnvDefault("HTTP_PORT", "8080")
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
 
@@ -76,6 +78,10 @@ func main() {
 
 	go PublishURLs(ttlHashSet, queueManager, publishChan)
 	go AcknowledgeItem(acknowledgeChan, ttlHashSet)
+
+	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
+	http.HandleFunc("/healthcheck", healthCheck.HTTPHandler())
+	log.Fatal(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit
 }
