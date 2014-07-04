@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/url"
@@ -23,9 +24,16 @@ var (
 	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
+	version        = "0.1.0"
 )
 
 func main() {
+	versionFlag := flag.Bool("version", false, "show version")
+	flag.Parse()
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 	if mirrorRoot == "" {
 		log.Fatal("MIRROR_ROOT environment variable not set")
 	}
