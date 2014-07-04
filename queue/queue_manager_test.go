@@ -61,14 +61,15 @@ var _ = Describe("QueueManager", func() {
 		})
 
 		AfterEach(func() {
+			defer queueManager.Close()
+
 			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, false)
+			// Consumer cannot delete exchange unless we Cancel() or Close()
+			err = queueManager.Producer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
-
-			queueManager.Close()
 		})
 
 		It("can consume and publish to the AMQP service", func() {

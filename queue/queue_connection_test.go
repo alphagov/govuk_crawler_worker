@@ -115,15 +115,16 @@ var _ = Describe("QueueConnection", func() {
 		})
 
 		AfterEach(func() {
+			defer consumer.Close()
+			defer publisher.Close()
+
 			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = consumer.Channel.ExchangeDelete(exchangeName, false, false)
+			// Consumer cannot delete exchange unless we Cancel() or Close()
+			err = publisher.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
-
-			defer publisher.Close()
-			defer consumer.Close()
 		})
 
 		It("should consume and publish messages onto the provided queue and exchange", func() {

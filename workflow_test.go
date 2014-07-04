@@ -57,6 +57,8 @@ var _ = Describe("Workflow", func() {
 		})
 
 		AfterEach(func() {
+			defer queueManager.Close()
+
 			Expect(ttlHashSet.Close()).To(BeNil())
 			Expect(purgeAllKeys(prefix, redisAddr)).To(BeNil())
 
@@ -64,10 +66,10 @@ var _ = Describe("Workflow", func() {
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, false)
+			// Consumer cannot delete exchange unless we Cancel() or Close()
+			err = queueManager.Producer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 
-			queueManager.Close()
 			DeleteMirrorFilesFromDisk(mirrorRoot)
 		})
 
