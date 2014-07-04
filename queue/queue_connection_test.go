@@ -50,7 +50,7 @@ var _ = Describe("QueueConnection", func() {
 			err = connection.ExchangeDeclare(exchange, "direct")
 			Expect(err).To(BeNil())
 
-			err = connection.Channel.ExchangeDelete(exchange, false, true)
+			err = connection.Channel.ExchangeDelete(exchange, false, false)
 			Expect(err).To(BeNil())
 		})
 
@@ -65,7 +65,7 @@ var _ = Describe("QueueConnection", func() {
 			Expect(err).To(BeNil())
 			Expect(queue.Name).To(Equal(name))
 
-			deleted, err := connection.Channel.QueueDelete(name, false, false, true)
+			deleted, err := connection.Channel.QueueDelete(name, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 		})
@@ -85,11 +85,11 @@ var _ = Describe("QueueConnection", func() {
 			err = connection.BindQueueToExchange(queueName, exchangeName)
 			Expect(err).To(BeNil())
 
-			deleted, err := connection.Channel.QueueDelete(queueName, false, false, true)
+			deleted, err := connection.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = connection.Channel.ExchangeDelete(exchangeName, false, true)
+			err = connection.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 		})
 	})
@@ -115,11 +115,11 @@ var _ = Describe("QueueConnection", func() {
 		})
 
 		AfterEach(func() {
-			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, true)
+			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = consumer.Channel.ExchangeDelete(exchangeName, false, true)
+			err = consumer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 
 			defer publisher.Close()

@@ -60,11 +60,11 @@ var _ = Describe("Workflow", func() {
 			Expect(ttlHashSet.Close()).To(BeNil())
 			Expect(purgeAllKeys(prefix, redisAddr)).To(BeNil())
 
-			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
+			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, true)
+			err = queueManager.Consumer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 
 			queueManager.Close()
