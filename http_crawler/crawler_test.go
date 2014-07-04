@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
+	. "github.com/alphagov/govuk_crawler_worker/package_info"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -67,7 +68,7 @@ var _ = Describe("Crawl", func() {
 			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker"))
+			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + Version))
 		})
 
 		It("returns a body with no errors for 200 OK responses", func() {

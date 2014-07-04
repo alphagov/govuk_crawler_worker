@@ -13,6 +13,7 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
+	"github.com/alphagov/govuk_crawler_worker/package_info"
 )
 
 var (
@@ -24,14 +25,13 @@ var (
 	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
-	version        = "0.1.0"
 )
 
 func main() {
 	versionFlag := flag.Bool("version", false, "show version and exit")
 	flag.Parse()
 	if *versionFlag {
-		fmt.Println(version)
+		fmt.Println(package_info.Version)
 		os.Exit(0)
 	}
 	if mirrorRoot == "" {
