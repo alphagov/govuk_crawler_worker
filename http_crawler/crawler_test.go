@@ -67,7 +67,7 @@ var _ = Describe("Crawl", func() {
 			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(strings.HasPrefix((string(body)), "GOV.UK Crawler Worker")).To(BeTrue())
+			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker"))
 		})
 
 		It("returns a body with no errors for 200 OK responses", func() {
