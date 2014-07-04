@@ -18,7 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
-	"github.com/fzzy/radix/redis"
 	"github.com/streadway/amqp"
 )
 
@@ -64,7 +63,7 @@ var _ = Describe("Workflow", func() {
 			defer queueManager.Close()
 
 			Expect(ttlHashSet.Close()).To(BeNil())
-			Expect(purgeAllKeys(prefix, redisAddr)).To(BeNil())
+			Expect(PurgeAllKeys(prefix, redisAddr)).To(BeNil())
 
 			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
@@ -272,25 +271,6 @@ var _ = Describe("Workflow", func() {
 		})
 	})
 })
-
-func purgeAllKeys(prefix string, address string) error {
-	client, err := redis.Dial("tcp", address)
-	if err != nil {
-		return err
-	}
-
-	keys, err := client.Cmd("KEYS", prefix+"*").List()
-	if err != nil || len(keys) <= 0 {
-		return err
-	}
-
-	reply := client.Cmd("DEL", keys)
-	if reply.Err != nil {
-		return reply.Err
-	}
-
-	return nil
-}
 
 func testServer(status int, body string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
