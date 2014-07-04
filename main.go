@@ -20,6 +20,7 @@ var (
 	queueName      = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
 	redisAddr      = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
+	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
@@ -29,7 +30,6 @@ func main() {
 		log.Fatal("MIRROR_ROOT environment variable not set")
 	}
 
-	rootURLString := util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
 	rootURL, err := url.Parse(rootURLString)
 	if err != nil {
 		log.Fatal("Couldn't parse ROOT_URL:", rootURLString)
