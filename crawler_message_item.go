@@ -68,11 +68,11 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 }
 
 func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
-	returnUrls := []*url.URL{}
+	extractedUrls := []*url.URL{}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.HTMLBody))
 	if err != nil {
-		return returnUrls, err
+		return extractedUrls, err
 	}
 
 	urlElementMatches := [][]string{
@@ -92,67 +92,67 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 		urls, err = parseUrls(hrefs)
 
 		if err != nil {
-			return returnUrls, err
+			return extractedUrls, err
 		}
 
 		urls = convertUrlsToAbsolute(c.rootURL, urls)
 		urls = filterUrlsByHost(c.rootURL.Host, urls)
 		urls = filterBlacklistedUrls(c.blacklistPaths, urls)
 
-		returnUrls = append(returnUrls, urls...)
+		extractedUrls = append(extractedUrls, urls...)
 	}
 
-	return returnUrls, err
+	return extractedUrls, err
 }
 
 func parseUrls(urls []string) ([]*url.URL, error) {
-	var returnUrls []*url.URL
+	var parsedUrls []*url.URL
 	var err error
 
 	for _, u := range urls {
 		u, err := url.Parse(u)
 		if err != nil {
-			return returnUrls, err
+			return parsedUrls, err
 		}
-		returnUrls = append(returnUrls, u)
+		parsedUrls = append(parsedUrls, u)
 	}
 
-	return returnUrls, err
+	return parsedUrls, err
 }
 
 func convertUrlsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
-	var returnUrls []*url.URL
+	var absoluteUrls []*url.URL
 
 	for _, u := range urls {
 		absUrl := rootURL.ResolveReference(u)
-		returnUrls = append(returnUrls, absUrl)
+		absoluteUrls = append(absoluteUrls, absUrl)
 	}
 
-	return returnUrls
+	return absoluteUrls
 }
 
 func filterUrlsByHost(host string, urls []*url.URL) []*url.URL {
-	var returnUrls []*url.URL
+	var filteredUrls []*url.URL
 
 	for _, u := range urls {
 		if u.Host == host {
-			returnUrls = append(returnUrls, u)
+			filteredUrls = append(filteredUrls, u)
 		}
 	}
 
-	return returnUrls
+	return filteredUrls
 }
 
 func filterBlacklistedUrls(blacklistedPaths []string, urls []*url.URL) []*url.URL {
-	var returnUrls []*url.URL
+	var filteredUrls []*url.URL
 
 	for _, u := range urls {
 		if !isBlacklistedPath(u.Path, blacklistedPaths) {
-			returnUrls = append(returnUrls, u)
+			filteredUrls = append(filteredUrls, u)
 		}
 	}
 
-	return returnUrls
+	return filteredUrls
 }
 
 func findHrefsByElementAttribute(
