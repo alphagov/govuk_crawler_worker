@@ -127,7 +127,7 @@ var _ = Describe("QueueConnection", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should consume and publish messages onto the provided queue and exchange", func() {
+		It("should consume and publish messages onto the provided queue and exchange", func(done Done) {
 			err = consumer.ExchangeDeclare(exchangeName, "direct")
 			Expect(err).To(BeNil())
 
@@ -143,11 +143,10 @@ var _ = Describe("QueueConnection", func() {
 			err = publisher.Publish(exchangeName, "#", "text/plain", "foo")
 			Expect(err).To(BeNil())
 
-			for d := range deliveries {
-				Expect(string(d.Body)).To(Equal("foo"))
-				d.Ack(false)
-				break
-			}
+			item := <-deliveries
+			Expect(string(item.Body)).To(Equal("foo"))
+			item.Ack(false)
+			close(done)
 		})
 	})
 })

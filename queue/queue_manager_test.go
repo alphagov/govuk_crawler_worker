@@ -72,18 +72,17 @@ var _ = Describe("QueueManager", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("can consume and publish to the AMQP service", func() {
+		It("can consume and publish to the AMQP service", func(done Done) {
 			deliveries, err := queueManager.Consume()
 			Expect(err).To(BeNil())
 
 			err = queueManager.Publish("#", "text/plain", "foo")
 			Expect(err).To(BeNil())
 
-			for d := range deliveries {
-				Expect(string(d.Body)).To(Equal("foo"))
-				d.Ack(false)
-				break
-			}
+			item := <-deliveries
+			Expect(string(item.Body)).To(Equal("foo"))
+			item.Ack(false)
+			close(done)
 		})
 	})
 })
