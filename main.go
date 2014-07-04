@@ -13,7 +13,6 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
-	"github.com/alphagov/govuk_crawler_worker/package_info"
 )
 
 var (
@@ -27,11 +26,13 @@ var (
 	mirrorRoot     = os.Getenv("MIRROR_ROOT")
 )
 
+const versionNumber string = "0.1.0"
+
 func main() {
 	versionFlag := flag.Bool("version", false, "show version and exit")
 	flag.Parse()
 	if *versionFlag {
-		fmt.Println(package_info.Version)
+		fmt.Println(versionNumber)
 		os.Exit(0)
 	}
 	if mirrorRoot == "" {
@@ -63,7 +64,7 @@ func main() {
 	defer queueManager.Close()
 	log.Println("Connected to AMQP service:", queueManager)
 
-	crawler := http_crawler.NewCrawler(rootURL)
+	crawler := http_crawler.NewCrawler(rootURL, versionNumber)
 	log.Println("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()

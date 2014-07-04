@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-
-	"github.com/alphagov/govuk_crawler_worker/package_info"
 )
 
 var (
@@ -23,6 +21,7 @@ var (
 
 type Crawler struct {
 	RootURL *url.URL
+	version string
 }
 
 func RetryStatusCodes() []int {
@@ -40,9 +39,10 @@ func RetryStatusCodes() []int {
 	return statusCodes
 }
 
-func NewCrawler(rootURL *url.URL) *Crawler {
+func NewCrawler(rootURL *url.URL, versionNumber string) *Crawler {
 	return &Crawler{
 		RootURL: rootURL,
+		version: versionNumber,
 	}
 }
 
@@ -59,7 +59,7 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 	hostname, _ := os.Hostname()
 
 	req.Header.Set("User-Agent", fmt.Sprintf(
-		"GOV.UK Crawler Worker/%s on host '%s'", package_info.Version, hostname))
+		"GOV.UK Crawler Worker/%s on host '%s'", c.version, hostname))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
