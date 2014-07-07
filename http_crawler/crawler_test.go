@@ -26,8 +26,7 @@ var _ = Describe("Crawl", func() {
 
 	BeforeEach(func() {
 		rootURL, _ := url.Parse("http://127.0.0.1")
-		crawler = NewCrawler(rootURL)
-
+		crawler = NewCrawler(rootURL, "0.0.0")
 		Expect(crawler).ToNot(BeNil())
 	})
 
@@ -45,8 +44,7 @@ var _ = Describe("Crawl", func() {
 	Describe("NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
 			rootURL, _ := url.Parse("https://www.gov.uk/")
-			GOVUKCrawler := NewCrawler(rootURL)
-
+			GOVUKCrawler := NewCrawler(rootURL, "0.0.0")
 			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
 		})
 	})
@@ -67,7 +65,7 @@ var _ = Describe("Crawl", func() {
 			body, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(strings.HasPrefix((string(body)), "GOV.UK Crawler Worker")).To(BeTrue())
+			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
 		})
 
 		It("returns a body with no errors for 200 OK responses", func() {

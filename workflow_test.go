@@ -118,8 +118,7 @@ var _ = Describe("Workflow", func() {
 
 			BeforeEach(func() {
 				rootURL, _ = url.Parse("http://127.0.0.1")
-				crawler = NewCrawler(rootURL)
-
+				crawler = NewCrawler(rootURL, "0.0.0")
 				Expect(crawler).ToNot(BeNil())
 			})
 
