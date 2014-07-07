@@ -10,7 +10,8 @@ type QueueConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
 
-	notifyClose chan *amqp.Error
+	HandleFatalError func(err *amqp.Error)
+	notifyClose      chan *amqp.Error
 }
 
 func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
@@ -30,16 +31,17 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 	}
 
 	queueConnection := &QueueConnection{
-		Connection:  connection,
-		Channel:     channel,
-		notifyClose: channel.NotifyClose(make(chan *amqp.Error)),
+		Connection:       connection,
+		Channel:          channel,
+		HandleFatalError: func(err *amqp.Error) { log.Fatal(err) },
+		notifyClose:      channel.NotifyClose(make(chan *amqp.Error)),
 	}
 
 	go func() {
 		select {
 		case e := <-queueConnection.notifyClose:
 			if e == amqp.ErrClosed {
-				log.Fatal(e)
+				queueConnection.HandleFatalError(e)
 			}
 		}
 	}()
