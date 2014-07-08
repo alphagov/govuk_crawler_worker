@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"net/url"
+
 	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/streadway/amqp"
 )
@@ -18,6 +20,74 @@ var _ = Describe("QueueConnection", func() {
 
 		Expect(err).ToNot(BeNil())
 		Expect(connection).To(BeNil())
+	})
+
+	Describe("Connection errors", func() {
+		var (
+			connection *QueueConnection
+			proxy      *util.ProxyTCP
+			proxyAddr  string           = "localhost:5673"
+			queueName  string           = "test-crawler-queue"
+			fatalErrs  chan *amqp.Error = make(chan *amqp.Error)
+		)
+
+		BeforeEach(func() {
+			proxyDest, err := addrFromURL(amqpAddr)
+			Expect(err).To(BeNil())
+			proxyURL, err := urlChangeAddr(amqpAddr, proxyAddr)
+			Expect(err).To(BeNil())
+
+			proxy, err = util.NewProxyTCP(proxyAddr, proxyDest)
+			Expect(err).To(BeNil())
+			Expect(proxy).ToNot(BeNil())
+
+			connection, err = NewQueueConnection(proxyURL)
+			Expect(err).To(BeNil())
+			Expect(connection).ToNot(BeNil())
+
+			connection.HandleFatalError = func(err *amqp.Error) {
+				fatalErrs <- err
+			}
+
+			_, err = connection.QueueDeclare(queueName)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			defer connection.Close()
+			defer proxy.Close()
+
+			// Assume existing connection is dead.
+			connection.Close()
+			connection, _ = NewQueueConnection(amqpAddr)
+
+			deleted, err := connection.Channel.QueueDelete(queueName, false, false, false)
+			Expect(err).To(BeNil())
+			Expect(deleted).To(Equal(0))
+		})
+
+		It("should exit on non-recoverable errors", func(done Done) {
+			const expectedError = "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
+
+			var err error
+			proxy.KillConnected()
+
+			_, err = connection.Channel.QueueInspect(queueName)
+			Expect(err.Error()).To(MatchRegexp(expectedError))
+
+			// We'd normally log.Fatal() here to exit.
+			err = <-fatalErrs
+			Expect(err.Error()).To(MatchRegexp(expectedError))
+
+			amqpErr, _ := err.(*amqp.Error)
+			Expect(amqpErr.Recover).To(Equal(false))
+
+			// Connection no longer works.
+			_, err = connection.Channel.QueueInspect(queueName)
+			Expect(err).To(Equal(amqp.ErrClosed))
+
+			close(done)
+		})
 	})
 
 	Describe("Connecting to a running AMQP service", func() {
@@ -115,14 +185,14 @@ var _ = Describe("QueueConnection", func() {
 		})
 
 		AfterEach(func() {
-			defer consumer.Close()
+			// Consumer must Cancel() or Close() before deleting.
+			consumer.Close()
 			defer publisher.Close()
 
-			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, false)
+			deleted, err := publisher.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			// Consumer cannot delete exchange unless we Cancel() or Close()
 			err = publisher.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 		})
@@ -150,3 +220,24 @@ var _ = Describe("QueueConnection", func() {
 		})
 	})
 })
+
+// addrFromURL extracts the addr (host:port) from a URL string.
+func addrFromURL(URL string) (string, error) {
+	parsedURL, err := url.Parse(URL)
+	if err != nil {
+		return "", err
+	}
+
+	return parsedURL.Host, nil
+}
+
+// urlChangeAddr changes the addr (host:port) of a URL string.
+func urlChangeAddr(origURL, newHost string) (string, error) {
+	parsedURL, err := url.Parse(origURL)
+	if err != nil {
+		return "", err
+	}
+
+	parsedURL.Host = newHost
+	return parsedURL.String(), nil
+}

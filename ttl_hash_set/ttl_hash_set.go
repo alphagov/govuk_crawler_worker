@@ -5,18 +5,36 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/fzzy/radix/redis"
 )
 
 const WaitBetweenReconnect = 2 * time.Second
+
+type ReconnectMutex struct {
+	mutex        sync.RWMutex
+	reconnecting bool
+}
+
+func (r *ReconnectMutex) Check() bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return r.reconnecting
+}
+
+func (r *ReconnectMutex) Update(state bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.reconnecting = state
+}
 
 type TTLHashSet struct {
 	addr    string
 	client  *redis.Client
 	mutex   sync.Mutex
 	prefix  string
-	rcMutex util.ReconnectMutex
+	rcMutex ReconnectMutex
 }
 
 func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
