@@ -66,19 +66,24 @@ var _ = Describe("QueueConnection", func() {
 			Expect(deleted).To(Equal(0))
 		})
 
-		It("should exit on amqp.ErrClosed errors", func(done Done) {
+		It("should exit on non-recoverable errors", func(done Done) {
 			var err error
 			proxy.KillConnected()
 
 			_, err = connection.Channel.QueueInspect(queueName)
 			Expect(err).To(MatchError("Exception (501) Reason: \"EOF\""))
 
+			// We'd normally log.Fatal() here to exit.
+			err = <-fatalErrs
+			Expect(err).To(MatchError("Exception (501) Reason: \"EOF\""))
+
+			amqpErr, _ := err.(*amqp.Error)
+			Expect(amqpErr.Recover).To(Equal(false))
+
 			// Connection no longer works.
 			_, err = connection.Channel.QueueInspect(queueName)
 			Expect(err).To(Equal(amqp.ErrClosed))
 
-			// We'd normally log.Fatal() here to exit.
-			Expect(<-fatalErrs).To(MatchError(amqp.ErrClosed))
 			close(done)
 		})
 	})
