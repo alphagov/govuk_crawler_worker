@@ -61,13 +61,14 @@ var _ = Describe("QueueManager", func() {
 		})
 
 		AfterEach(func() {
+			// Consumer must Cancel() or Close() before deleting.
+			queueManager.Consumer.Close()
 			defer queueManager.Close()
 
-			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, false)
+			deleted, err := queueManager.Producer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			// Consumer cannot delete exchange unless we Cancel() or Close()
 			err = queueManager.Producer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 		})

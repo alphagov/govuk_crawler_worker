@@ -178,14 +178,14 @@ var _ = Describe("QueueConnection", func() {
 		})
 
 		AfterEach(func() {
-			defer consumer.Close()
+			// Consumer must Cancel() or Close() before deleting.
+			consumer.Close()
 			defer publisher.Close()
 
-			deleted, err := consumer.Channel.QueueDelete(queueName, false, false, false)
+			deleted, err := publisher.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			// Consumer cannot delete exchange unless we Cancel() or Close()
 			err = publisher.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 		})

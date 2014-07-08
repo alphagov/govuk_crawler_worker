@@ -60,16 +60,17 @@ var _ = Describe("Workflow", func() {
 		})
 
 		AfterEach(func() {
+			// Consumer must Cancel() or Close() before deleting.
+			queueManager.Consumer.Close()
 			defer queueManager.Close()
 
 			Expect(ttlHashSet.Close()).To(BeNil())
 			Expect(PurgeAllKeys(prefix, redisAddr)).To(BeNil())
 
-			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, false)
+			deleted, err := queueManager.Producer.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
 
-			// Consumer cannot delete exchange unless we Cancel() or Close()
 			err = queueManager.Producer.Channel.ExchangeDelete(exchangeName, false, false)
 			Expect(err).To(BeNil())
 
@@ -94,6 +95,7 @@ var _ = Describe("Workflow", func() {
 
 				for item := range deliveries {
 					outbound <- NewCrawlerMessageItem(item, rootURL, []string{})
+					item.Ack(false)
 					break
 				}
 
@@ -207,6 +209,7 @@ var _ = Describe("Workflow", func() {
 				go func() {
 					for item := range deliveries {
 						outbound <- item.Body
+						item.Ack(false)
 					}
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
@@ -236,6 +239,7 @@ var _ = Describe("Workflow", func() {
 				go func() {
 					for item := range deliveries {
 						outbound <- item.Body
+						item.Ack(false)
 					}
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
@@ -263,6 +267,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 
 				item := <-outbound
+				item.Ack(false)
 				Expect(string(item.Body)).To(Equal(url))
 
 				close(outbound)
