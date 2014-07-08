@@ -11,11 +11,13 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/alphagov/govuk_crawler_worker/util"
 	"github.com/streadway/amqp"
 )
 
 func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
 	for item := range inbound {
+		start := time.Now()
 		url := item.URL()
 
 		_, err := ttlHashSet.Add(url)
@@ -27,6 +29,8 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 
 		item.Ack(false)
 		log.Println("Acknowledged:", url)
+
+		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
 }
 
@@ -39,11 +43,11 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 		crawler *http_crawler.Crawler,
 	) {
 		for item := range crawl {
+			start := time.Now()
 			u, err := url.Parse(item.URL())
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
-
 			}
 			log.Println("Crawling URL:", u)
 
@@ -70,6 +74,8 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			} else {
 				item.Ack(false)
 			}
+
+			util.StatsDTiming("crawl_url", start, time.Now())
 		}
 	}
 
@@ -87,6 +93,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 		extract chan<- *CrawlerMessageItem,
 	) {
 		for item := range crawl {
+			start := time.Now()
 			relativeFilePath, err := item.RelativeFilePath()
 
 			if err != nil {
@@ -114,6 +121,8 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			}
 
 			extract <- item
+
+			util.StatsDTiming("write_to_disk", start, time.Now())
 		}
 	}
 
@@ -132,6 +141,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 		acknowledge chan<- *CrawlerMessageItem,
 	) {
 		for item := range extract {
+			start := time.Now()
 			urls, err := item.ExtractURLs()
 			if err != nil {
 				item.Reject(false)
@@ -145,6 +155,8 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 			}
 
 			acknowledge <- item
+
+			util.StatsDTiming("extract_urls", start, time.Now())
 		}
 	}
 
@@ -155,6 +167,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
+		start := time.Now()
 		exists, err := ttlHashSet.Exists(url)
 
 		if err != nil {
@@ -167,6 +180,8 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 				log.Fatalln("Delivery failed:", url, err)
 			}
 		}
+
+		util.StatsDTiming("publish_urls", start, time.Now())
 	}
 }
 
@@ -180,6 +195,7 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 		blacklistPaths []string,
 	) {
 		for item := range inbound {
+			start := time.Now()
 			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
 			log.Println(rootURL)
 
@@ -196,6 +212,8 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 				log.Println("URL already crawled:", message.URL())
 				item.Ack(false)
 			}
+
+			util.StatsDTiming("read_from_queue", start, time.Now())
 		}
 	}
 

@@ -5,6 +5,14 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/etsy/statsd/examples/go"
+)
+
+var (
+	statsdClient = statsd.New("localhost", 8125)
+	statsdPrefix = "govuk_crawler_worker."
 )
 
 func GetEnvDefault(key string, defaultVal string) string {
@@ -81,4 +89,9 @@ func (p *ProxyTCP) KillConnected() {
 	for _, conn := range p.conns {
 		conn.Close()
 	}
+}
+
+func StatsDTiming(label string, start, end time.Time) {
+	statsdClient.Timing(statsdPrefix+"time."+label,
+		int64(end.Sub(start)/time.Millisecond))
 }
