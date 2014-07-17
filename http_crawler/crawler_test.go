@@ -60,10 +60,7 @@ var _ = Describe("Crawl", func() {
 
 		It("returns an error when a redirect is encounted", func() {
 			redirectTestServer := func(httpStatus int) *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Location", "bar")
-					w.WriteHeader(httpStatus)
-				}))
+				return httptest.NewServer(http.RedirectHandler("/redirect", httpStatus))
 			}
 
 			ts := redirectTestServer(http.StatusMovedPermanently)
