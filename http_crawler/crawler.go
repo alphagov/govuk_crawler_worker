@@ -47,12 +47,10 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 
 	hostname, _ := os.Hostname()
 
-	tr := &http.Transport{}
-
 	req.Header.Set("User-Agent", fmt.Sprintf(
 		"GOV.UK Crawler Worker/%s on host '%s'", c.version, hostname))
 
-	resp, err := tr.RoundTrip(req)
+	resp, err := http.DefaultTransport.RoundTrip(req)
 
 	if err != nil {
 		return []byte{}, err
