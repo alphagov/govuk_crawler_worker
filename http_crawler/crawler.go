@@ -59,10 +59,20 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 
 	hostname, _ := os.Hostname()
 
+	httpClient := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) > 0 {
+				return errors.New("Encountered redirect, aborting")
+			}
+
+			return nil
+		},
+	}
+
 	req.Header.Set("User-Agent", fmt.Sprintf(
 		"GOV.UK Crawler Worker/%s on host '%s'", c.version, hostname))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return []byte{}, err
 	}

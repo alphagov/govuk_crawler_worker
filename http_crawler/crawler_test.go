@@ -69,6 +69,29 @@ var _ = Describe("Crawl", func() {
 			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
 		})
 
+		It("returns an error when a redirect is encounted", func() {
+			redirectTestServer := func(httpStatus int) *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Location", "bar")
+					w.WriteHeader(httpStatus)
+				}))
+			}
+
+			ts := redirectTestServer(http.StatusMovedPermanently)
+			defer ts.Close()
+
+			testURL, _ := url.Parse(ts.URL)
+			_, err := crawler.Crawl(testURL)
+
+			expectedErr := &url.Error{
+				Op:  "Get",
+				URL: "bar",
+				Err: errors.New("Encountered redirect, aborting"),
+			}
+
+			Expect(err).To(Equal(expectedErr))
+		})
+
 		It("returns an error when server returns a 404", func() {
 			ts := testServer(http.StatusNotFound, "Not found")
 			defer ts.Close()
