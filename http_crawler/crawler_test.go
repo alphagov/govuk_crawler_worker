@@ -1,6 +1,7 @@
 package http_crawler_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -66,6 +67,16 @@ var _ = Describe("Crawl", func() {
 
 			Expect(err).To(BeNil())
 			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
+		})
+
+		It("returns an error when server returns a 404", func() {
+			ts := testServer(http.StatusNotFound, "Not found")
+			defer ts.Close()
+
+			testURL, _ := url.Parse(ts.URL)
+			_, err := crawler.Crawl(testURL)
+
+			Expect(err).To(Equal(errors.New("404 Not Found")))
 		})
 
 		It("returns a body with no errors for 200 OK responses", func() {

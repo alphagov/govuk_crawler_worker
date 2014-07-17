@@ -14,6 +14,7 @@ import (
 var (
 	CannotCrawlURL    error = errors.New("Cannot crawl URLs that don't live under the provided root URL")
 	RetryRequestError error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
+	NotFoundError     error = errors.New("404 Not Found")
 
 	statusCodes []int
 	once        sync.Once
@@ -66,8 +67,13 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	if contains(RetryStatusCodes(), resp.StatusCode) {
-		return []byte{}, RetryRequestError
+	if resp.StatusCode != http.StatusOK {
+		switch {
+		case contains(RetryStatusCodes(), resp.StatusCode):
+			return []byte{}, RetryRequestError
+		case resp.StatusCode == http.StatusNotFound:
+			return []byte{}, NotFoundError
+		}
 	}
 
 	defer resp.Body.Close()
