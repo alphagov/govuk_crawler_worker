@@ -1,6 +1,7 @@
 package http_crawler_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -30,17 +31,6 @@ var _ = Describe("Crawl", func() {
 		Expect(crawler).ToNot(BeNil())
 	})
 
-	Describe("RetryStatusCodes", func() {
-		It("should return a fixed int array with values 429, 500..599", func() {
-			statusCodes := RetryStatusCodes()
-
-			Expect(len(statusCodes)).To(Equal(101))
-			Expect(statusCodes[0]).To(Equal(429))
-			Expect(statusCodes[1]).To(Equal(500))
-			Expect(statusCodes[100]).To(Equal(599))
-		})
-	})
-
 	Describe("NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
 			rootURL, _ := url.Parse("https://www.gov.uk/")
@@ -66,6 +56,30 @@ var _ = Describe("Crawl", func() {
 
 			Expect(err).To(BeNil())
 			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
+		})
+
+		It("returns an error when a redirect is encounted", func() {
+			redirectTestServer := func(httpStatus int) *httptest.Server {
+				return httptest.NewServer(http.RedirectHandler("/redirect", httpStatus))
+			}
+
+			ts := redirectTestServer(http.StatusMovedPermanently)
+			defer ts.Close()
+
+			testURL, _ := url.Parse(ts.URL)
+			_, err := crawler.Crawl(testURL)
+
+			Expect(err).To(Equal(errors.New("HTTP redirect encountered")))
+		})
+
+		It("returns an error when server returns a 404", func() {
+			ts := testServer(http.StatusNotFound, "Nothing to see here")
+			defer ts.Close()
+
+			testURL, _ := url.Parse(ts.URL)
+			_, err := crawler.Crawl(testURL)
+
+			Expect(err).To(Equal(errors.New("404 Not Found")))
 		})
 
 		It("returns a body with no errors for 200 OK responses", func() {
@@ -120,6 +134,17 @@ var _ = Describe("Crawl", func() {
 				Expect(err).To(Equal(RetryRequestError))
 				Expect(body).To(Equal([]byte{}))
 			})
+		})
+	})
+
+	Describe("RetryStatusCodes", func() {
+		It("should return a fixed int array with values 429, 500..599", func() {
+			statusCodes := RetryStatusCodes()
+
+			Expect(len(statusCodes)).To(Equal(101))
+			Expect(statusCodes[0]).To(Equal(429))
+			Expect(statusCodes[1]).To(Equal(500))
+			Expect(statusCodes[100]).To(Equal(599))
 		})
 	})
 })
