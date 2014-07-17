@@ -197,7 +197,6 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 		for item := range inbound {
 			start := time.Now()
 			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
-			log.Println(rootURL)
 
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {
