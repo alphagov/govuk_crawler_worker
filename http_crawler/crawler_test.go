@@ -83,13 +83,7 @@ var _ = Describe("Crawl", func() {
 			testURL, _ := url.Parse(ts.URL)
 			_, err := crawler.Crawl(testURL)
 
-			expectedErr := &url.Error{
-				Op:  "Get",
-				URL: "bar",
-				Err: errors.New("Encountered redirect, aborting"),
-			}
-
-			Expect(err).To(Equal(expectedErr))
+			Expect(err).To(Equal(errors.New("HTTP redirect encountered")))
 		})
 
 		It("returns an error when server returns a 404", func() {

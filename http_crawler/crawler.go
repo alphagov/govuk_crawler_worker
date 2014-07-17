@@ -15,6 +15,9 @@ var (
 	CannotCrawlURL    error = errors.New("Cannot crawl URLs that don't live under the provided root URL")
 	RetryRequestError error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
 	NotFoundError     error = errors.New("404 Not Found")
+	RedirectError     error = errors.New("HTTP redirect encountered")
+
+	redirectStatusCodes = []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect}
 
 	statusCodes []int
 	once        sync.Once
@@ -59,20 +62,13 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 
 	hostname, _ := os.Hostname()
 
-	httpClient := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > 0 {
-				return errors.New("Encountered redirect, aborting")
-			}
-
-			return nil
-		},
-	}
+	tr := &http.Transport{}
 
 	req.Header.Set("User-Agent", fmt.Sprintf(
 		"GOV.UK Crawler Worker/%s on host '%s'", c.version, hostname))
 
-	resp, err := httpClient.Do(req)
+	resp, err := tr.RoundTrip(req)
+
 	if err != nil {
 		return []byte{}, err
 	}
@@ -83,6 +79,8 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 			return []byte{}, RetryRequestError
 		case resp.StatusCode == http.StatusNotFound:
 			return []byte{}, NotFoundError
+		case contains(redirectStatusCodes, resp.StatusCode):
+			return []byte{}, RedirectError
 		}
 	}
 
