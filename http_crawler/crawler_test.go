@@ -31,17 +31,6 @@ var _ = Describe("Crawl", func() {
 		Expect(crawler).ToNot(BeNil())
 	})
 
-	Describe("RetryStatusCodes", func() {
-		It("should return a fixed int array with values 429, 500..599", func() {
-			statusCodes := RetryStatusCodes()
-
-			Expect(len(statusCodes)).To(Equal(101))
-			Expect(statusCodes[0]).To(Equal(429))
-			Expect(statusCodes[1]).To(Equal(500))
-			Expect(statusCodes[100]).To(Equal(599))
-		})
-	})
-
 	Describe("NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
 			rootURL, _ := url.Parse("https://www.gov.uk/")
@@ -148,6 +137,17 @@ var _ = Describe("Crawl", func() {
 				Expect(err).To(Equal(RetryRequestError))
 				Expect(body).To(Equal([]byte{}))
 			})
+		})
+	})
+
+	Describe("RetryStatusCodes", func() {
+		It("should return a fixed int array with values 429, 500..599", func() {
+			statusCodes := RetryStatusCodes()
+
+			Expect(len(statusCodes)).To(Equal(101))
+			Expect(statusCodes[0]).To(Equal(429))
+			Expect(statusCodes[1]).To(Equal(500))
+			Expect(statusCodes[100]).To(Equal(599))
 		})
 	})
 })
