@@ -73,7 +73,7 @@ var _ = Describe("Crawl", func() {
 		})
 
 		It("returns an error when server returns a 404", func() {
-			ts := testServer(http.StatusNotFound, "Not found")
+			ts := testServer(http.StatusNotFound, "Nothing to see here")
 			defer ts.Close()
 
 			testURL, _ := url.Parse(ts.URL)
