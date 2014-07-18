@@ -1,6 +1,7 @@
 package http_crawler_test
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,15 +28,50 @@ var _ = Describe("Crawl", func() {
 
 	BeforeEach(func() {
 		rootURL, _ := url.Parse("http://127.0.0.1")
-		crawler = NewCrawler(rootURL, "0.0.0")
+		crawler = NewCrawler(rootURL, "0.0.0", nil)
 		Expect(crawler).ToNot(BeNil())
 	})
 
 	Describe("NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
 			rootURL, _ := url.Parse("https://www.gov.uk/")
-			GOVUKCrawler := NewCrawler(rootURL, "0.0.0")
+			GOVUKCrawler := NewCrawler(rootURL, "0.0.0", nil)
 			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
+		})
+
+		It("can accept username and password for HTTP Basic Auth", func() {
+			// Returns a HandlerFunc that authenticates via Basic
+			// Auth. Writes a http.StatusUnauthorized if
+			// authentication fails.
+			basic := func(username string, password string) http.HandlerFunc {
+				unauthorized := func(res http.ResponseWriter) {
+					res.Header().Set("WWW-Authenticate", "Basic realm=\"Authorization Required\"")
+					http.Error(res, "Not Authorized", http.StatusUnauthorized)
+				}
+				siteAuth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+
+				return func(res http.ResponseWriter, req *http.Request) {
+					if req.Header.Get("Authorization") != ("Basic " + siteAuth) {
+						unauthorized(res)
+						return
+					}
+
+					res.WriteHeader(200)
+					res.Write([]byte("You've successfully logged in with basic auth!"))
+				}
+			}
+
+			basicAuthTestServer := httptest.NewServer(http.HandlerFunc(basic("username", "password")))
+			defer basicAuthTestServer.Close()
+
+			rootURL, _ := url.Parse("http://127.0.0.1")
+			basicAuthCrawler := NewCrawler(rootURL, "0.0.0", &BasicAuth{"username", "password"})
+
+			testURL, _ := url.Parse(basicAuthTestServer.URL)
+			body, err := basicAuthCrawler.Crawl(testURL)
+
+			Expect(err).To(BeNil())
+			Expect(string(body)).To(Equal("You've successfully logged in with basic auth!"))
 		})
 	})
 
