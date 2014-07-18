@@ -68,6 +68,7 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		switch {
@@ -80,7 +81,6 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 		}
 	}
 
-	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, err
