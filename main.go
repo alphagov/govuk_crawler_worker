@@ -17,15 +17,17 @@ import (
 )
 
 var (
-	amqpAddr       = util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
-	exchangeName   = util.GetEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
-	queueName      = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
-	redisAddr      = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
-	redisKeyPrefix = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
-	rootURLString  = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
-	blacklistPaths = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
-	httpPort       = util.GetEnvDefault("HTTP_PORT", "8080")
-	mirrorRoot     = os.Getenv("MIRROR_ROOT")
+	amqpAddr          = util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+	exchangeName      = util.GetEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
+	queueName         = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
+	basicAuthUsername = util.GetEnvDefault("BASIC_AUTH_USERNAME", "")
+	basicAuthPassword = util.GetEnvDefault("BASIC_AUTH_PASSWORD", "")
+	redisAddr         = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
+	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
+	rootURLString     = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	blacklistPaths    = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	httpPort          = util.GetEnvDefault("HTTP_PORT", "8080")
+	mirrorRoot        = os.Getenv("MIRROR_ROOT")
 )
 
 const versionNumber string = "0.1.0"
@@ -66,7 +68,13 @@ func main() {
 	defer queueManager.Close()
 	log.Println("Connected to AMQP service:", queueManager)
 
-	crawler := http_crawler.NewCrawler(rootURL, versionNumber)
+	var crawler *http_crawler.Crawler
+	if basicAuthUsername != "" && basicAuthPassword != "" {
+		crawler = http_crawler.NewCrawler(rootURL, versionNumber,
+			&http_crawler.BasicAuth{basicAuthUsername, basicAuthPassword})
+	} else {
+		crawler = http_crawler.NewCrawler(rootURL, versionNumber, nil)
+	}
 	log.Println("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()

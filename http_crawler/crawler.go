@@ -23,15 +23,24 @@ var (
 	once        sync.Once
 )
 
-type Crawler struct {
-	RootURL *url.URL
-	version string
+type BasicAuth struct {
+	Username string
+	Password string
 }
 
-func NewCrawler(rootURL *url.URL, versionNumber string) *Crawler {
+type Crawler struct {
+	RootURL *url.URL
+
+	basicAuth *BasicAuth
+	version   string
+}
+
+func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
 	return &Crawler{
 		RootURL: rootURL,
-		version: versionNumber,
+
+		basicAuth: basicAuth,
+		version:   versionNumber,
 	}
 }
 
@@ -43,6 +52,10 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 	req, err := http.NewRequest("GET", crawlURL.String(), nil)
 	if err != nil {
 		return []byte{}, err
+	}
+
+	if c.basicAuth != nil {
+		req.SetBasicAuth(c.basicAuth.Username, c.basicAuth.Password)
 	}
 
 	hostname, _ := os.Hostname()
