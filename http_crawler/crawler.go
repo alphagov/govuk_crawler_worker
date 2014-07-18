@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	CannotCrawlURL    error = errors.New("Cannot crawl URLs that don't live under the provided root URL")
-	RetryRequestError error = errors.New("Retry request: 429 or 5XX HTTP Response returned")
-	NotFoundError     error = errors.New("404 Not Found")
-	RedirectError     error = errors.New("HTTP redirect encountered")
+	CannotCrawlURL    = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	RetryRequestError = errors.New("Retry request: 429 or 5XX HTTP Response returned")
+	NotFoundError     = errors.New("404 Not Found")
+	RedirectError     = errors.New("HTTP redirect encountered")
 
 	redirectStatusCodes = []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect}
 
