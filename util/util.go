@@ -7,12 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/etsy/statsd/examples/go"
+	"github.com/quipo/statsd"
 )
 
 var (
-	statsdClient = statsd.New("localhost", 8125)
-	statsdPrefix = "govuk_crawler_worker."
+	statsdClient = newStatsDClient("localhost:8125", "govuk_crawler_worker.")
 )
 
 func GetEnvDefault(key string, defaultVal string) string {
@@ -92,6 +91,17 @@ func (p *ProxyTCP) KillConnected() {
 }
 
 func StatsDTiming(label string, start, end time.Time) {
-	statsdClient.Timing(statsdPrefix+"time."+label,
+	statsdClient.Timing("time."+label,
 		int64(end.Sub(start)/time.Millisecond))
+}
+
+func StatsDGauge(label string, value int64) {
+	statsdClient.Gauge("gauge."+label, value)
+}
+
+func newStatsDClient(host, prefix string) *statsd.StatsdClient {
+	statsdClient := statsd.NewStatsdClient(host, prefix)
+	statsdClient.CreateSocket()
+
+	return statsdClient
 }

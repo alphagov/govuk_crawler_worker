@@ -181,6 +181,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 			}
 		}
 
+		util.StatsDGauge("publish_urls", int64(len(publish)))
 		util.StatsDTiming("publish_urls", start, time.Now())
 	}
 }
