@@ -83,7 +83,7 @@ func main() {
 	}
 	log.Println("Generated delivery (consumer) channel:", deliveries)
 
-	dontQuit := make(chan int)
+	dontQuit := make(chan struct{})
 
 	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
 	publishChan := make(<-chan string, 100)
