@@ -9,6 +9,7 @@ import (
 )
 
 const WaitBetweenReconnect = 2 * time.Second
+const ttlExpiryTime = 24 * time.Hour
 
 type ReconnectMutex struct {
 	mutex        sync.RWMutex
@@ -56,7 +57,7 @@ func (t *TTLHashSet) Add(key string) (bool, error) {
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
 	t.client.Append("SET", localKey, 1)
-	t.client.Append("EXPIRE", localKey, (12 * time.Hour).Seconds())
+	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
 	add, err := t.client.GetReply().Bool()
 	t.mutex.Unlock()
 
