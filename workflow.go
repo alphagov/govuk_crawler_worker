@@ -120,6 +120,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 				continue
 			}
 
+			log.Println("Wrote URL body to disk for:", item.URL())
 			extract <- item
 
 			util.StatsDTiming("write_to_disk", start, time.Now())
