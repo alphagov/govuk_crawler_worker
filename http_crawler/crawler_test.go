@@ -145,7 +145,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				body, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequestError))
+				Expect(err).To(Equal(RetryRequest429Error))
 				Expect(body).To(Equal([]byte{}))
 			})
 
@@ -156,7 +156,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				body, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequestError))
+				Expect(err).To(Equal(RetryRequest5XXError))
 				Expect(body).To(Equal([]byte{}))
 			})
 
@@ -167,7 +167,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				body, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequestError))
+				Expect(err).To(Equal(RetryRequest5XXError))
 				Expect(body).To(Equal([]byte{}))
 			})
 		})
@@ -175,12 +175,11 @@ var _ = Describe("Crawl", func() {
 
 	Describe("RetryStatusCodes", func() {
 		It("should return a fixed int array with values 429, 500..599", func() {
-			statusCodes := RetryStatusCodes()
+			statusCodes := Retry5XXStatusCodes()
 
-			Expect(len(statusCodes)).To(Equal(101))
-			Expect(statusCodes[0]).To(Equal(429))
-			Expect(statusCodes[1]).To(Equal(500))
-			Expect(statusCodes[100]).To(Equal(599))
+			Expect(len(statusCodes)).To(Equal(100))
+			Expect(statusCodes[0]).To(Equal(500))
+			Expect(statusCodes[99]).To(Equal(599))
 		})
 	})
 })
