@@ -53,12 +53,14 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 
 			body, err := crawler.Crawl(u)
 			if err != nil {
-				if err == http_crawler.RetryRequestError {
+				if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
 					item.Reject(true)
 					log.Println("Couldn't crawl (requeueing):", u.String(), err)
 
-					// Back off from crawling for a few seconds.
-					time.Sleep(3 * time.Second)
+					if err == http_crawler.RetryRequest429Error {
+						// Back off from crawling for a few seconds.
+						time.Sleep(5 * time.Second)
+					}
 				} else {
 					item.Reject(false)
 					log.Println("Couldn't crawl (rejecting):", u.String(), err)

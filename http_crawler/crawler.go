@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	CannotCrawlURL    = errors.New("Cannot crawl URLs that don't live under the provided root URL")
-	RetryRequestError = errors.New("Retry request: 429 or 5XX HTTP Response returned")
-	NotFoundError     = errors.New("404 Not Found")
-	RedirectError     = errors.New("HTTP redirect encountered")
+	CannotCrawlURL       = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	NotFoundError        = errors.New("404 Not Found")
+	RedirectError        = errors.New("HTTP redirect encountered")
+	RetryRequest5XXError = errors.New("Retry request: 5XX HTTP Response returned")
+	RetryRequest429Error = errors.New("Retry request: 429 HTTP Response returned (back off)")
 
 	redirectStatusCodes = []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect}
 
@@ -72,8 +73,10 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		switch {
-		case contains(RetryStatusCodes(), resp.StatusCode):
-			return []byte{}, RetryRequestError
+		case resp.StatusCode == 429:
+			return []byte{}, RetryRequest429Error
+		case contains(Retry5XXStatusCodes(), resp.StatusCode):
+			return []byte{}, RetryRequest5XXError
 		case resp.StatusCode == http.StatusNotFound:
 			return []byte{}, NotFoundError
 		case contains(redirectStatusCodes, resp.StatusCode):
@@ -89,12 +92,12 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 	return body, nil
 }
 
-func RetryStatusCodes() []int {
+func Retry5XXStatusCodes() []int {
 	// This is go's equivalent of memoization/macro expansion. It's
 	// being used here because we have a fixed array we're generating
 	// with known values.
 	once.Do(func() {
-		statusCodes = []int{429}
+		statusCodes = []int{}
 
 		for i := 500; i <= 599; i++ {
 			statusCodes = append(statusCodes, i)
