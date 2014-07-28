@@ -215,6 +215,15 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(len(urls)).To(Equal(1))
 			Expect(urls).To(ContainElement(expectedUrl))
 		})
+
+		It("should remove the #fragment when extracting URLs", func() {
+			item.HTMLBody = []byte(`<div><a href="http://www.gov.uk/#germany"></a></div>`)
+			expectedUrl, _ := url.Parse("http://www.gov.uk/")
+			urls, err := item.ExtractURLs()
+
+			Expect(err).To(BeNil())
+			Expect(urls).To(ContainElement(expectedUrl))
+		})
 	})
 
 	It("removes paths that are blacklisted", func() {

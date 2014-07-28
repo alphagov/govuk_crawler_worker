@@ -99,6 +99,11 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 		urls = filterUrlsByHost(c.rootURL.Host, urls)
 		urls = filterBlacklistedUrls(c.blacklistPaths, urls)
 
+		// Remove the fragment from the URLs.
+		for _, u := range urls {
+			u.Fragment = ""
+		}
+
 		extractedUrls = append(extractedUrls, urls...)
 	}
 
