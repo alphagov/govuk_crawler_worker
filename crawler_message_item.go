@@ -68,11 +68,11 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 }
 
 func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
-	extractedUrls := []*url.URL{}
+	extractedURLs := []*url.URL{}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.HTMLBody))
 	if err != nil {
-		return extractedUrls, err
+		return extractedURLs, err
 	}
 
 	urlElementMatches := [][]string{
@@ -89,58 +89,58 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 		element, attr := attr[0], attr[1]
 
 		hrefs = findHrefsByElementAttribute(document, element, attr)
-		urls, err = parseUrls(hrefs)
+		urls, err = parseURLs(hrefs)
 
 		if err != nil {
-			return extractedUrls, err
+			return extractedURLs, err
 		}
 
-		urls = convertUrlsToAbsolute(c.rootURL, urls)
-		urls = filterUrlsByHost(c.rootURL.Host, urls)
-		urls = filterBlacklistedUrls(c.blacklistPaths, urls)
-		urls = removeFragmentFromUrls(urls)
+		urls = convertURLsToAbsolute(c.rootURL, urls)
+		urls = filterURLsByHost(c.rootURL.Host, urls)
+		urls = filterBlacklistedURLs(c.blacklistPaths, urls)
+		urls = removeFragmentFromURLs(urls)
 
-		extractedUrls = append(extractedUrls, urls...)
+		extractedURLs = append(extractedURLs, urls...)
 	}
 
-	return extractedUrls, err
+	return extractedURLs, err
 }
 
-func parseUrls(urls []string) ([]*url.URL, error) {
-	var parsedUrls []*url.URL
+func parseURLs(urls []string) ([]*url.URL, error) {
+	var parsedURLs []*url.URL
 	var err error
 
 	for _, u := range urls {
 		u, err := url.Parse(u)
 		if err != nil {
-			return parsedUrls, err
+			return parsedURLs, err
 		}
-		parsedUrls = append(parsedUrls, u)
+		parsedURLs = append(parsedURLs, u)
 	}
 
-	return parsedUrls, err
+	return parsedURLs, err
 }
 
-func convertUrlsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
+func convertURLsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
 	return mapURLs(urls, func(url *url.URL) *url.URL {
 		return rootURL.ResolveReference(url)
 	})
 }
 
-func removeFragmentFromUrls(urls []*url.URL) []*url.URL {
+func removeFragmentFromURLs(urls []*url.URL) []*url.URL {
 	return mapURLs(urls, func(url *url.URL) *url.URL {
 		url.Fragment = ""
 		return url
 	})
 }
 
-func filterUrlsByHost(host string, urls []*url.URL) []*url.URL {
+func filterURLsByHost(host string, urls []*url.URL) []*url.URL {
 	return filterURLs(urls, func(url *url.URL) bool {
 		return url.Host == host
 	})
 }
 
-func filterBlacklistedUrls(blacklistedPaths []string, urls []*url.URL) []*url.URL {
+func filterBlacklistedURLs(blacklistedPaths []string, urls []*url.URL) []*url.URL {
 	return filterURLs(urls, func(url *url.URL) bool {
 		return !isBlacklistedPath(url.Path, blacklistedPaths)
 	})
