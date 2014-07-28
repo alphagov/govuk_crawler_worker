@@ -98,11 +98,7 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 		urls = convertUrlsToAbsolute(c.rootURL, urls)
 		urls = filterUrlsByHost(c.rootURL.Host, urls)
 		urls = filterBlacklistedUrls(c.blacklistPaths, urls)
-
-		// Remove the fragment from the URLs.
-		for _, u := range urls {
-			u.Fragment = ""
-		}
+		urls = removeFragmentFromUrls(urls)
 
 		extractedUrls = append(extractedUrls, urls...)
 	}
@@ -126,38 +122,54 @@ func parseUrls(urls []string) ([]*url.URL, error) {
 }
 
 func convertUrlsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
-	var absoluteUrls []*url.URL
+	return mapURLs(urls, func(url *url.URL) *url.URL {
+		return rootURL.ResolveReference(url)
+	})
+}
 
-	for _, u := range urls {
-		absUrl := rootURL.ResolveReference(u)
-		absoluteUrls = append(absoluteUrls, absUrl)
-	}
-
-	return absoluteUrls
+func removeFragmentFromUrls(urls []*url.URL) []*url.URL {
+	return mapURLs(urls, func(url *url.URL) *url.URL {
+		url.Fragment = ""
+		return url
+	})
 }
 
 func filterUrlsByHost(host string, urls []*url.URL) []*url.URL {
-	var filteredUrls []*url.URL
-
-	for _, u := range urls {
-		if u.Host == host {
-			filteredUrls = append(filteredUrls, u)
-		}
-	}
-
-	return filteredUrls
+	return filterURLs(urls, func(url *url.URL) bool {
+		return url.Host == host
+	})
 }
 
 func filterBlacklistedUrls(blacklistedPaths []string, urls []*url.URL) []*url.URL {
-	var filteredUrls []*url.URL
+	return filterURLs(urls, func(url *url.URL) bool {
+		return !isBlacklistedPath(url.Path, blacklistedPaths)
+	})
+}
 
-	for _, u := range urls {
-		if !isBlacklistedPath(u.Path, blacklistedPaths) {
-			filteredUrls = append(filteredUrls, u)
+// Filter an array of *url.URL objects based on a filter function that
+// returns a boolean. Only elements that return true for this filter
+// function will be kept. Returns a new array.
+func filterURLs(urls []*url.URL, filterFunc func(u *url.URL) bool) []*url.URL {
+	var filteredURLs []*url.URL
+
+	for _, url := range urls {
+		if filterFunc(url) {
+			filteredURLs = append(filteredURLs, url)
 		}
 	}
 
-	return filteredUrls
+	return filteredURLs
+}
+
+// Map a function to each element of a *url.URL array. Returns a new
+// array but will edit any url.URL objects in place should the mapFunc
+// mutate state.
+func mapURLs(urls []*url.URL, mapFunc func(u *url.URL) *url.URL) []*url.URL {
+	for index, url := range urls {
+		urls[index] = mapFunc(url)
+	}
+
+	return urls
 }
 
 func findHrefsByElementAttribute(
