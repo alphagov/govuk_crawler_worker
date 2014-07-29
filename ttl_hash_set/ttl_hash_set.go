@@ -9,7 +9,7 @@ import (
 )
 
 const WaitBetweenReconnect = 2 * time.Second
-const ttlExpiryTime = 24 * time.Hour
+const ttlExpiryTime = 48 * time.Hour
 
 type ReconnectMutex struct {
 	mutex        sync.RWMutex
