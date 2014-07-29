@@ -34,7 +34,11 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 	}
 }
 
-func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler) <-chan *CrawlerMessageItem {
+func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
+	if crawlerThreads <= 0 {
+		panic("cannot start a negative or zero number of crawler threads")
+	}
+
 	extractChannel := make(chan *CrawlerMessageItem, 2)
 
 	crawlLoop := func(
@@ -82,8 +86,9 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 		}
 	}
 
-	go crawlLoop(crawlChannel, extractChannel, crawler)
-	go crawlLoop(crawlChannel, extractChannel, crawler)
+	for i := 1; i <= crawlerThreads; i++ {
+		go crawlLoop(crawlChannel, extractChannel, crawler)
+	}
 
 	return extractChannel
 }
