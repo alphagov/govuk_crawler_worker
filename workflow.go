@@ -48,6 +48,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
+				continue
 			}
 			log.Println("Crawling URL:", u)
 
