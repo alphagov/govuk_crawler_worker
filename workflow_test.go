@@ -133,12 +133,24 @@ var _ = Describe("Workflow", func() {
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
 				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 
-				crawled := CrawlURL(outbound, crawler)
+				crawled := CrawlURL(outbound, crawler, 1)
 
 				Expect((<-crawled).HTMLBody[0:24]).To(Equal([]byte(body)))
 
 				server.Close()
 				close(outbound)
+			})
+
+			It("expects the number of goroutines to run to be a positive integer", func() {
+				outbound := make(chan *CrawlerMessageItem, 1)
+
+				Expect(func() {
+					CrawlURL(outbound, crawler, 0)
+				}).To(Panic())
+
+				Expect(func() {
+					CrawlURL(outbound, crawler, -1)
+				}).To(Panic())
 			})
 		})
 

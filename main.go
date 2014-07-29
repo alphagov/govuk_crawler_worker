@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -21,6 +22,7 @@ var (
 	basicAuthPassword = util.GetEnvDefault("BASIC_AUTH_PASSWORD", "")
 	basicAuthUsername = util.GetEnvDefault("BASIC_AUTH_USERNAME", "")
 	blacklistPaths    = util.GetEnvDefault("BLACKLIST_PATHS", "/search,/government/uploads")
+	crawlerThreads    = util.GetEnvDefault("CRAWLER_THREADS", "4")
 	exchangeName      = util.GetEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
 	httpPort          = util.GetEnvDefault("HTTP_PORT", "8080")
 	queueName         = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
@@ -88,8 +90,14 @@ func main() {
 	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
 	publishChan := make(<-chan string, 100)
 
+	var crawlerThreadsInt int
+	crawlerThreadsInt, err = strconv.Atoi(crawlerThreads)
+	if err != nil {
+		crawlerThreadsInt = 1
+	}
+
 	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths))
-	persistChan = CrawlURL(crawlChan, crawler)
+	persistChan = CrawlURL(crawlChan, crawler, crawlerThreadsInt)
 	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
 	publishChan, acknowledgeChan = ExtractURLs(parseChan)
 
