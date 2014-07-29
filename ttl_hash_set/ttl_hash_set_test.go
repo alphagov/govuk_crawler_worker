@@ -56,14 +56,14 @@ var _ = Describe("TTLHashSet", func() {
 			_, _ = ttlHashSet.Incr(key)
 
 			proxy.KillConnected()
-			exists, err := ttlHashSet.Exists(key)
+			val, err := ttlHashSet.Get(key)
 
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
-			Expect(exists).To(Equal(false))
+			Expect(val).To(Equal(0))
 
 			Eventually(func() (bool, error) {
-				return ttlHashSet.Exists(key)
+				return ttlHashSet.Get(key)
 			}).Should(Equal(true))
 		})
 
@@ -72,10 +72,10 @@ var _ = Describe("TTLHashSet", func() {
 			proxy.Close()
 
 			start := time.Now()
-			exists, err := ttlHashSet.Exists(key)
+			val, err := ttlHashSet.Get(key)
 
 			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
-			Expect(exists).To(Equal(false))
+			Expect(val).To(Equal(0))
 
 			time.Sleep(delayBetween) // Allow first reconnect to fail.
 			proxy, err = util.NewProxyTCP(proxyAddr, redisAddr)
@@ -85,10 +85,10 @@ var _ = Describe("TTLHashSet", func() {
 
 			errorCount := 0
 			for time.Since(start) < reconnectTime {
-				exists, err := ttlHashSet.Exists(key)
+				val, err := ttlHashSet.Get(key)
 
 				Expect(err).To(MatchError("use of closed network connection"))
-				Expect(exists).To(Equal(false))
+				Expect(val).To(Equal(0))
 
 				time.Sleep(delayBetween)
 				errorCount++
@@ -98,10 +98,10 @@ var _ = Describe("TTLHashSet", func() {
 			expectedErrors := int((reconnectTime / delayBetween) - 1)
 			Expect(errorCount).To(BeNumerically("~", expectedErrors, 2))
 
-			exists, err = ttlHashSet.Exists(key)
+			val, err = ttlHashSet.Get(key)
 
 			Expect(err).To(BeNil())
-			Expect(exists).To(Equal(true))
+			Expect(val).To(Equal(1))
 		})
 	})
 
@@ -125,11 +125,11 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(ttlHashSet).NotTo(BeNil())
 		})
 
-		It("should return false when a key doesn't exist", func() {
-			exists, err := ttlHashSet.Exists("foobar")
+		It("should return zero when a key doesn't exist", func() {
+			val, err := ttlHashSet.Get("foobar")
 
 			Expect(err).To(BeNil())
-			Expect(exists).To(Equal(false))
+			Expect(val).To(Equal(0))
 		})
 
 		It("exposes a way of incrementing a key", func() {
@@ -139,10 +139,10 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(incrErr).To(BeNil())
 			Expect(incr).To(Equal(true))
 
-			exists, existsErr := ttlHashSet.Exists(key)
+			val, getErr := ttlHashSet.Get(key)
 
-			Expect(existsErr).To(BeNil())
-			Expect(exists).To(Equal(true))
+			Expect(getErr).To(BeNil())
+			Expect(val).To(Equal(1))
 		})
 
 		It("exposes a way to ping the underlying redis service", func() {

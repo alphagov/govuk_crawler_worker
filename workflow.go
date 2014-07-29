@@ -40,14 +40,14 @@ func ReadFromQueue(
 				continue
 			}
 
-			exists, err := ttlHashSet.Exists(message.URL())
+			val, err := ttlHashSet.Get(message.URL())
 			if err != nil {
 				item.Reject(true)
 				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
-			if exists {
+			if val == -1 {
 				log.Println("URL already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (ReadFromQueue): ", message.URL())
@@ -216,14 +216,14 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
 		start := time.Now()
-		exists, err := ttlHashSet.Exists(url)
+		val, err := ttlHashSet.Get(url)
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
-		if !exists {
+		if val == 0 {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)

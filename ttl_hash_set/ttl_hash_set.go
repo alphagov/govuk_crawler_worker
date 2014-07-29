@@ -99,18 +99,22 @@ func (t *TTLHashSet) Close() error {
 	return err
 }
 
-func (t *TTLHashSet) Exists(key string) (bool, error) {
+func (t *TTLHashSet) Get(key string) (int, error) {
 	localKey := prefixKey(t.prefix, key)
 
 	t.mutex.Lock()
-	exists, err := t.client.Cmd("EXISTS", localKey).Bool()
+	get, err := t.client.Cmd("GET", localKey).Int()
 	t.mutex.Unlock()
 
 	if err != nil {
-		t.reconnectIfIOError(err)
+		if err.Error() == "integer value is not available for this reply type" {
+			return get, nil
+		} else {
+			t.reconnectIfIOError(err)
+		}
 	}
 
-	return exists, err
+	return get, err
 }
 
 // Sends a PING to the underlying Redis service. This can be used to
