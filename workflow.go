@@ -66,7 +66,7 @@ func ReadFromQueue(
 	return outboundChannel
 }
 
-func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
+func CrawlURL(ttlHashSet *ttl_hash_set.TTLHashSet, crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
 	if crawlerThreads < 1 {
 		panic("cannot start a negative or zero number of crawler threads")
 	}
@@ -74,6 +74,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 	extractChannel := make(chan *CrawlerMessageItem, 2)
 
 	crawlLoop := func(
+		ttlHashSet *ttl_hash_set.TTLHashSet,
 		crawl <-chan *CrawlerMessageItem,
 		extract chan<- *CrawlerMessageItem,
 		crawler *http_crawler.Crawler,
@@ -88,13 +89,28 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			}
 			log.Println("Crawling URL:", u)
 
+			get, err := ttlHashSet.Get(u.String())
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
+				continue
+			}
+
+			if get == 5 {
+				item.Reject(false)
+				log.Println("Aborting crawl of URL which has been retried 5 times (rejecting):", u.String())
+				continue
+			}
+
 			body, err := crawler.Crawl(u)
 			if err != nil {
 				if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
 					item.Reject(true)
 					log.Println("Couldn't crawl (requeueing):", u.String(), err)
 
-					if err == http_crawler.RetryRequest429Error {
+					if err == http_crawler.RetryRequest5XXError {
+						ttlHashSet.Incr(u.String())
+					} else if err == http_crawler.RetryRequest429Error {
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
@@ -124,7 +140,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 	}
 
 	for i := 1; i <= crawlerThreads; i++ {
-		go crawlLoop(crawlChannel, extractChannel, crawler)
+		go crawlLoop(ttlHashSet, crawlChannel, extractChannel, crawler)
 	}
 
 	return extractChannel
@@ -223,7 +239,9 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 			continue
 		}
 
-		if val == 0 {
+		if val == -1 {
+			log.Println("URL already crawled:", url)
+		} else if val == 0 {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)
@@ -240,7 +258,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
-		_, err := ttlHashSet.Incr(url)
+		_, err := ttlHashSet.Set(url, -1)
 		if err != nil {
 			item.Reject(false)
 			log.Println("Acknowledge failed (rejecting):", url, err)

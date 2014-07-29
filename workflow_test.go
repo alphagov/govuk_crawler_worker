@@ -109,7 +109,7 @@ var _ = Describe("Workflow", func() {
 
 				val, err = ttlHashSet.Get(url)
 				Expect(err).To(BeNil())
-				Expect(val).To(Equal(1))
+				Expect(val).To(Equal(-1))
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)
@@ -134,7 +134,7 @@ var _ = Describe("Workflow", func() {
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
 				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 
-				crawled := CrawlURL(outbound, crawler, 1)
+				crawled := CrawlURL(ttlHashSet, outbound, crawler, 1)
 
 				Expect((<-crawled).HTMLBody[0:24]).To(Equal([]byte(body)))
 
@@ -146,11 +146,11 @@ var _ = Describe("Workflow", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
 				Expect(func() {
-					CrawlURL(outbound, crawler, 0)
+					CrawlURL(ttlHashSet, outbound, crawler, 0)
 				}).To(Panic())
 
 				Expect(func() {
-					CrawlURL(outbound, crawler, -1)
+					CrawlURL(ttlHashSet, outbound, crawler, -1)
 				}).To(Panic())
 			})
 		})
