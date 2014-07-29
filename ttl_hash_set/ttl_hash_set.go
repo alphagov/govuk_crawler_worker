@@ -51,21 +51,29 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 	}, nil
 }
 
-func (t *TTLHashSet) Add(key string) (bool, error) {
+func (t *TTLHashSet) Incr(key string) (bool, error) {
 	localKey := prefixKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
-	t.client.Append("SET", localKey, 1)
+	t.client.Append("INCR", localKey)
 	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
-	add, err := t.client.GetReply().Bool()
-	t.mutex.Unlock()
 
+	incrCmd, err := t.client.GetReply().Bool()
 	if err != nil {
 		t.reconnectIfIOError(err)
+		return incrCmd, err
 	}
 
-	return add, err
+	expireCmd, err := t.client.GetReply().Bool()
+	if err != nil {
+		t.reconnectIfIOError(err)
+		return expireCmd, err
+	}
+	t.mutex.Unlock()
+
+	success := incrCmd && expireCmd
+	return success, err
 }
 
 func (t *TTLHashSet) Close() error {
