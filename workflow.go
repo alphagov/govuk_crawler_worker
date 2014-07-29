@@ -66,7 +66,13 @@ func ReadFromQueue(
 	return outboundChannel
 }
 
-func CrawlURL(ttlHashSet *ttl_hash_set.TTLHashSet, crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
+func CrawlURL(
+	ttlHashSet *ttl_hash_set.TTLHashSet,
+	crawlChannel <-chan *CrawlerMessageItem,
+	crawler *http_crawler.Crawler,
+	crawlerThreads int,
+	maxCrawlRetries int,
+) <-chan *CrawlerMessageItem {
 	if crawlerThreads < 1 {
 		panic("cannot start a negative or zero number of crawler threads")
 	}
@@ -78,6 +84,7 @@ func CrawlURL(ttlHashSet *ttl_hash_set.TTLHashSet, crawlChannel <-chan *CrawlerM
 		crawl <-chan *CrawlerMessageItem,
 		extract chan<- *CrawlerMessageItem,
 		crawler *http_crawler.Crawler,
+		maxCrawlRetries int,
 	) {
 		for item := range crawl {
 			start := time.Now()
@@ -96,9 +103,9 @@ func CrawlURL(ttlHashSet *ttl_hash_set.TTLHashSet, crawlChannel <-chan *CrawlerM
 				continue
 			}
 
-			if get == 5 {
+			if get == maxCrawlRetries {
 				item.Reject(false)
-				log.Println("Aborting crawl of URL which has been retried 5 times (rejecting):", u.String())
+				log.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
 				continue
 			}
 
@@ -140,7 +147,7 @@ func CrawlURL(ttlHashSet *ttl_hash_set.TTLHashSet, crawlChannel <-chan *CrawlerM
 	}
 
 	for i := 1; i <= crawlerThreads; i++ {
-		go crawlLoop(ttlHashSet, crawlChannel, extractChannel, crawler)
+		go crawlLoop(ttlHashSet, crawlChannel, extractChannel, crawler, maxCrawlRetries)
 	}
 
 	return extractChannel
