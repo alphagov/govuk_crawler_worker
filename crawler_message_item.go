@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/kennygrant/sanitize"
 	"github.com/streadway/amqp"
 )
 
@@ -61,7 +61,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 		}
 	}
 
-	filePath = sanitize.Path(filePath)
+	filePath = path.Clean(filePath)
 	filePath = strings.TrimPrefix(filePath, "/")
 
 	return filePath, nil

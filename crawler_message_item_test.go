@@ -84,9 +84,45 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
 		})
-		It("strips illegal characters", func() {
-			testUrl = rootURL.String() + "/../!T@e£s$t/U^R*L(){}"
-			expectedFilePath = "test/url.html"
+		It("strips preceeding path traversals and resolves the remaining path", func() {
+			testUrl = rootURL.String() + "/../../one/./two/../three"
+			expectedFilePath = "one/three.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("preserves case sensitivity", func() {
+			testUrl = rootURL.String() + "/test/UPPER/MiXeD"
+			expectedFilePath = "test/UPPER/MiXeD.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("preserves non-alphanumeric characters", func() {
+			testUrl = rootURL.String() + "/test/!T@e£s$t/U^R*L(){}"
+			expectedFilePath = "test/!T@e£s$t/U^R*L(){}.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("preserves multiple dashes", func() {
+			testUrl = rootURL.String() + "/test/one-two--three---"
+			expectedFilePath = "test/one-two--three---.html"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.HTMLBody = html
+
+			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+		})
+		It("preserves non-latin chars and not URL encode them", func() {
+			testUrl = rootURL.String() + `/test/如何在香港申請英國簽證`
+			expectedFilePath = `test/如何在香港申請英國簽證.html`
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.HTMLBody = html
