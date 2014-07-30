@@ -158,6 +158,8 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 			if err != nil {
 				item.Reject(false)
 				log.Println("ExtractURLs (rejecting):", string(item.Body), err)
+
+				continue
 			}
 
 			log.Println("Extracted URLs:", len(urls))
