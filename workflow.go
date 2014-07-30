@@ -63,8 +63,11 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 					log.Println("Couldn't crawl (requeueing):", u.String(), err)
 
 					if err == http_crawler.RetryRequest429Error {
+						sleepTime := 5 * time.Second
+
 						// Back off from crawling for a few seconds.
-						time.Sleep(5 * time.Second)
+						log.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
+						time.Sleep(sleepTime)
 					}
 				} else {
 					item.Reject(false)
