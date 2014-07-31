@@ -132,17 +132,19 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(val).To(Equal(0))
 		})
 
-		It("exposes a way of incrementing a key", func() {
+		It("increments a key sequentially", func() {
 			key := "foo.bar.baz"
-			incr, incrErr := ttlHashSet.Incr(key)
+			for i := 1; i < 5; i++ {
+				incr, incrErr := ttlHashSet.Incr(key)
 
-			Expect(incrErr).To(BeNil())
-			Expect(incr).To(Equal(true))
+				Expect(incrErr).To(BeNil())
+				Expect(incr).To(Equal(true))
 
-			val, getErr := ttlHashSet.Get(key)
+				val, getErr := ttlHashSet.Get(key)
 
-			Expect(getErr).To(BeNil())
-			Expect(val).To(Equal(1))
+				Expect(getErr).To(BeNil())
+				Expect(val).To(Equal(i))
+			}
 		})
 
 		It("exposes a way to ping the underlying redis service", func() {
