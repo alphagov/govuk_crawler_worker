@@ -15,6 +15,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const NotRecentlyCrawled int = 0
+const AlreadyCrawled int = -1
+
 func ReadFromQueue(
 	inboundChannel <-chan amqp.Delivery,
 	rootURL *url.URL,
@@ -47,7 +50,7 @@ func ReadFromQueue(
 				continue
 			}
 
-			if val == -1 {
+			if val == AlreadyCrawled {
 				log.Println("URL already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (ReadFromQueue): ", message.URL())
@@ -246,9 +249,9 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 			continue
 		}
 
-		if val == -1 {
+		if val == AlreadyCrawled {
 			log.Println("URL already crawled:", url)
-		} else if val == 0 {
+		} else if val == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)
@@ -265,7 +268,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
-		_, err := ttlHashSet.Set(url, -1)
+		_, err := ttlHashSet.Set(url, AlreadyCrawled)
 		if err != nil {
 			item.Reject(false)
 			log.Println("Acknowledge failed (rejecting):", url, err)

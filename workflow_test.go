@@ -85,7 +85,7 @@ var _ = Describe("Workflow", func() {
 
 				val, err := ttlHashSet.Get(url)
 				Expect(err).To(BeNil())
-				Expect(val).To(Equal(0))
+				Expect(val).To(Equal(NotRecentlyCrawled))
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
@@ -109,7 +109,7 @@ var _ = Describe("Workflow", func() {
 
 				val, err = ttlHashSet.Get(url)
 				Expect(err).To(BeNil())
-				Expect(val).To(Equal(-1))
+				Expect(val).To(Equal(AlreadyCrawled))
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)
