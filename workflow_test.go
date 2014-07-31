@@ -142,6 +142,39 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 
+			It("doesn't crawl an item that has been retried too many times", func() {
+				body := `<a href="gov.uk">bar</a>`
+				server := testServer(500, body)
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				Expect(len(crawlChan)).To(Equal(0))
+
+				maxRetries := 4
+
+				err = queueManager.Publish("#", "text/plain", server.URL)
+				Expect(err).To(BeNil())
+				Eventually(crawlChan).Should(HaveLen(1))
+
+				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				Eventually(crawlChan).Should(HaveLen(0))
+
+				Eventually(func() (int, error) {
+					return ttlHashSet.Get(server.URL)
+				}).Should(Equal(maxRetries))
+
+				Eventually(func() (int, error) {
+					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
+					return queueInfo.Messages, err
+				}).Should(Equal(0))
+				Expect(len(crawled)).To(Equal(0))
+
+				server.Close()
+				close(crawlChan)
+			})
+
 			It("expects the number of goroutines to run to be a positive integer", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
