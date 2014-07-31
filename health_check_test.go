@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 
@@ -100,7 +101,7 @@ var _ = Describe("HealthCheck", func() {
 			w := httptest.NewRecorder()
 			handler(w, nil)
 
-			Expect(w.Code).To(Equal(200))
+			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(strings.TrimSpace(w.Body.String())).To(Equal(`{"amqp":true,"redis":true}`))
 		})
 	})

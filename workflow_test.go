@@ -129,7 +129,7 @@ var _ = Describe("Workflow", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
 				body := `<a href="gov.uk">bar</a>`
-				server := testServer(200, body)
+				server := testServer(http.StatusOK, body)
 
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
 				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
@@ -144,7 +144,7 @@ var _ = Describe("Workflow", func() {
 
 			It("doesn't crawl an item that has been retried too many times", func() {
 				body := `<a href="gov.uk">bar</a>`
-				server := testServer(500, body)
+				server := testServer(http.StatusInternalServerError, body)
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
