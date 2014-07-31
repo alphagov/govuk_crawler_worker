@@ -35,7 +35,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 }
 
 func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
-	if crawlerThreads <= 0 {
+	if crawlerThreads < 1 {
 		panic("cannot start a negative or zero number of crawler threads")
 	}
 
@@ -186,6 +186,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
+			continue
 		}
 
 		if !exists {
@@ -220,12 +221,13 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 				continue
 			}
 
-			if !exists {
-				outbound <- message
-			} else {
+			if exists {
 				log.Println("URL already crawled:", message.URL())
 				item.Ack(false)
+				continue
 			}
+
+			outbound <- message
 
 			util.StatsDTiming("read_from_queue", start, time.Now())
 		}
