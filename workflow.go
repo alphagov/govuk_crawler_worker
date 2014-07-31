@@ -186,6 +186,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
+			continue
 		}
 
 		if !exists {
