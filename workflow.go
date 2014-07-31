@@ -17,20 +17,23 @@ import (
 
 func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
 	for item := range inbound {
-		start := time.Now()
-		url := item.URL()
+		func() {
+			start := time.Now()
+			defer util.StatsDTiming("acknowledge_item", start, time.Now())
 
-		_, err := ttlHashSet.Add(url)
-		if err != nil {
-			item.Reject(false)
-			log.Println("Acknowledge failed (rejecting):", url, err)
-			continue
-		}
+			url := item.URL()
 
-		item.Ack(false)
-		log.Println("Acknowledged:", url)
+			_, err := ttlHashSet.Add(url)
+			if err != nil {
+				item.Reject(false)
+				log.Println("Acknowledge failed (rejecting):", url, err)
+				return
+			}
 
-		util.StatsDTiming("acknowledge_item", start, time.Now())
+			item.Ack(false)
+			log.Println("Acknowledged:", url)
+			return
+		}()
 	}
 }
 
@@ -47,45 +50,48 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 		crawler *http_crawler.Crawler,
 	) {
 		for item := range crawl {
-			start := time.Now()
-			u, err := url.Parse(item.URL())
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
-				continue
-			}
-			log.Println("Crawling URL:", u)
+			func() {
+				start := time.Now()
+				defer util.StatsDTiming("crawl_url", start, time.Now())
 
-			body, err := crawler.Crawl(u)
-			if err != nil {
-				if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
-					item.Reject(true)
-					log.Println("Couldn't crawl (requeueing):", u.String(), err)
-
-					if err == http_crawler.RetryRequest429Error {
-						sleepTime := 5 * time.Second
-
-						// Back off from crawling for a few seconds.
-						log.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
-						time.Sleep(sleepTime)
-					}
-				} else {
+				u, err := url.Parse(item.URL())
+				if err != nil {
 					item.Reject(false)
-					log.Println("Couldn't crawl (rejecting):", u.String(), err)
+					log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
+					return
+				}
+				log.Println("Crawling URL:", u)
+
+				body, err := crawler.Crawl(u)
+				if err != nil {
+					if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
+						item.Reject(true)
+						log.Println("Couldn't crawl (requeueing):", u.String(), err)
+
+						if err == http_crawler.RetryRequest429Error {
+							sleepTime := 5 * time.Second
+
+							// Back off from crawling for a few seconds.
+							log.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
+							time.Sleep(sleepTime)
+						}
+					} else {
+						item.Reject(false)
+						log.Println("Couldn't crawl (rejecting):", u.String(), err)
+					}
+
+					return
 				}
 
-				continue
-			}
+				item.HTMLBody = body
 
-			item.HTMLBody = body
-
-			if item.IsHTML() {
-				extract <- item
-			} else {
-				item.Ack(false)
-			}
-
-			util.StatsDTiming("crawl_url", start, time.Now())
+				if item.IsHTML() {
+					extract <- item
+				} else {
+					item.Ack(false)
+				}
+				return
+			}()
 		}
 	}
 
@@ -104,37 +110,40 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 		extract chan<- *CrawlerMessageItem,
 	) {
 		for item := range crawl {
-			start := time.Now()
-			relativeFilePath, err := item.RelativeFilePath()
+			func() {
+				start := time.Now()
+				defer util.StatsDTiming("write_to_disk", start, time.Now())
 
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", err)
-				continue
-			}
+				relativeFilePath, err := item.RelativeFilePath()
 
-			filePath := filepath.Join(basePath, relativeFilePath)
-			basePath := filepath.Dir(filePath)
-			err = os.MkdirAll(basePath, 0755)
+				if err != nil {
+					item.Reject(false)
+					log.Println("Couldn't write to disk (rejecting):", err)
+					return
+				}
 
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
-				continue
-			}
+				filePath := filepath.Join(basePath, relativeFilePath)
+				basePath := filepath.Dir(filePath)
+				err = os.MkdirAll(basePath, 0755)
 
-			err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
+				if err != nil {
+					item.Reject(false)
+					log.Println("Couldn't write to disk (rejecting):", filePath, err)
+					return
+				}
 
-			if err != nil {
-				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
-				continue
-			}
+				err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
 
-			log.Println("Wrote URL body to disk for:", item.URL())
-			extract <- item
+				if err != nil {
+					item.Reject(false)
+					log.Println("Couldn't write to disk (rejecting):", filePath, err)
+					return
+				}
 
-			util.StatsDTiming("write_to_disk", start, time.Now())
+				log.Println("Wrote URL body to disk for:", item.URL())
+				extract <- item
+				return
+			}()
 		}
 	}
 
@@ -153,24 +162,27 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 		acknowledge chan<- *CrawlerMessageItem,
 	) {
 		for item := range extract {
-			start := time.Now()
-			urls, err := item.ExtractURLs()
-			if err != nil {
-				item.Reject(false)
-				log.Println("ExtractURLs (rejecting):", string(item.Body), err)
+			func() {
+				start := time.Now()
+				defer util.StatsDTiming("extract_urls", start, time.Now())
 
-				continue
-			}
+				urls, err := item.ExtractURLs()
+				if err != nil {
+					item.Reject(false)
+					log.Println("ExtractURLs (rejecting):", string(item.Body), err)
 
-			log.Println("Extracted URLs:", len(urls))
+					return
+				}
 
-			for _, u := range urls {
-				publish <- u.String()
-			}
+				log.Println("Extracted URLs:", len(urls))
 
-			acknowledge <- item
+				for _, u := range urls {
+					publish <- u.String()
+				}
 
-			util.StatsDTiming("extract_urls", start, time.Now())
+				acknowledge <- item
+				return
+			}()
 		}
 	}
 
@@ -181,23 +193,27 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
-		start := time.Now()
-		exists, err := ttlHashSet.Exists(url)
+		func() {
+			start := time.Now()
+			defer util.StatsDGauge("publish_urls", int64(len(publish)))
+			defer util.StatsDTiming("publish_urls", start, time.Now())
 
-		if err != nil {
-			log.Println("Couldn't check existence of URL:", url, err)
-			continue
-		}
+			exists, err := ttlHashSet.Exists(url)
 
-		if !exists {
-			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
-				log.Fatalln("Delivery failed:", url, err)
+				log.Println("Couldn't check existence of URL:", url, err)
+				return
 			}
-		}
 
-		util.StatsDGauge("publish_urls", int64(len(publish)))
-		util.StatsDTiming("publish_urls", start, time.Now())
+			if !exists {
+				err = queueManager.Publish("#", "text/plain", url)
+				if err != nil {
+					log.Fatalln("Delivery failed:", url, err)
+				}
+			}
+
+			return
+		}()
 	}
 }
 
@@ -211,25 +227,28 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 		blacklistPaths []string,
 	) {
 		for item := range inbound {
-			start := time.Now()
-			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
+			func() {
+				start := time.Now()
+				defer util.StatsDTiming("read_from_queue", start, time.Now())
 
-			exists, err := ttlHashSet.Exists(message.URL())
-			if err != nil {
-				item.Reject(true)
-				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
-				continue
-			}
+				message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
 
-			if exists {
-				log.Println("URL already crawled:", message.URL())
-				item.Ack(false)
-				continue
-			}
+				exists, err := ttlHashSet.Exists(message.URL())
+				if err != nil {
+					item.Reject(true)
+					log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
+					return
+				}
 
-			outbound <- message
+				if exists {
+					log.Println("URL already crawled:", message.URL())
+					item.Ack(false)
+					return
+				}
 
-			util.StatsDTiming("read_from_queue", start, time.Now())
+				outbound <- message
+				return
+			}()
 		}
 	}
 
