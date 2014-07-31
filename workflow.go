@@ -35,7 +35,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 }
 
 func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
-	if crawlerThreads <= 0 {
+	if crawlerThreads < 1 {
 		panic("cannot start a negative or zero number of crawler threads")
 	}
 
