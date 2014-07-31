@@ -225,6 +225,7 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 			} else {
 				log.Println("URL already crawled:", message.URL())
 				item.Ack(false)
+				continue
 			}
 
 			util.StatsDTiming("read_from_queue", start, time.Now())
