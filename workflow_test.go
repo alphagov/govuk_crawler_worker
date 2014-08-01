@@ -83,9 +83,9 @@ var _ = Describe("Workflow", func() {
 			It("should read from a channel and add URLs to the hash set", func() {
 				url := "https://www.gov.uk/foo"
 
-				val, err := ttlHashSet.Get(url)
+				exists, err := ttlHashSet.Exists(url)
 				Expect(err).To(BeNil())
-				Expect(val).To(Equal(NotRecentlyCrawled))
+				Expect(exists).To(Equal(false))
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
@@ -107,9 +107,9 @@ var _ = Describe("Workflow", func() {
 
 				Eventually(outbound).Should(HaveLen(0))
 
-				val, err = ttlHashSet.Get(url)
+				exists, err = ttlHashSet.Exists(url)
 				Expect(err).To(BeNil())
-				Expect(val).To(Equal(AlreadyCrawled))
+				Expect(exists).To(Equal(true))
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)

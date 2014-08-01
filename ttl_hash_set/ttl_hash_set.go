@@ -117,6 +117,20 @@ func (t *TTLHashSet) Get(key string) (int, error) {
 	return get, err
 }
 
+func (t *TTLHashSet) Exists(key string) (bool, error) {
+	localKey := prefixKey(t.prefix, key)
+
+	t.mutex.Lock()
+	exists, err := t.client.Cmd("EXISTS", localKey).Bool()
+	t.mutex.Unlock()
+
+	if err != nil {
+		t.reconnectIfIOError(err)
+	}
+
+	return exists, err
+}
+
 // Sends a PING to the underlying Redis service. This can be used to
 // healthcheck any Redis servers we're connected to.
 func (t *TTLHashSet) Ping() (string, error) {
