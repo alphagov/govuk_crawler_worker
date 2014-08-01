@@ -57,6 +57,9 @@ var _ = Describe("Workflow", func() {
 
 			Expect(queueManagerErr).To(BeNil())
 			Expect(queueManager).ToNot(BeNil())
+
+			queueManager.Consumer.HandleChannelClose = func(_ string) {}
+			queueManager.Producer.HandleChannelClose = func(_ string) {}
 		})
 
 		AfterEach(func() {
