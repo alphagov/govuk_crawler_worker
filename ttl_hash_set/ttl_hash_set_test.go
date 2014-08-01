@@ -62,11 +62,9 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err.Error()).To(MatchRegexp("EOF|connection reset by peer"))
 			Expect(exists).To(Equal(false))
 
-			time.Sleep(delayBetween) // Allow other goroutine to reconnect.
-			exists, err = ttlHashSet.Exists(key)
-
-			Expect(err).To(BeNil())
-			Expect(exists).To(Equal(true))
+			Eventually(func() (bool, error) {
+				return ttlHashSet.Exists(key)
+			}).Should(Equal(true))
 		})
 
 		It("should return errors until reconnected", func() {
