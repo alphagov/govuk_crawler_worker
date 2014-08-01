@@ -43,14 +43,14 @@ func ReadFromQueue(
 				continue
 			}
 
-			val, err := ttlHashSet.Get(message.URL())
+			crawlCount, err := ttlHashSet.Get(message.URL())
 			if err != nil {
 				item.Reject(true)
 				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
-			if val == AlreadyCrawled {
+			if crawlCount == AlreadyCrawled {
 				log.Println("URL already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (ReadFromQueue): ", message.URL())
@@ -99,14 +99,14 @@ func CrawlURL(
 			}
 			log.Println("Crawling URL:", u)
 
-			get, err := ttlHashSet.Get(u.String())
+			crawlCount, err := ttlHashSet.Get(u.String())
 			if err != nil {
 				item.Reject(false)
 				log.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
 				continue
 			}
 
-			if get == maxCrawlRetries {
+			if crawlCount == maxCrawlRetries {
 				item.Reject(false)
 				log.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
 				continue
@@ -242,16 +242,16 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
 		start := time.Now()
-		val, err := ttlHashSet.Get(url)
+		crawlCount, err := ttlHashSet.Get(url)
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
-		if val == AlreadyCrawled {
+		if crawlCount == AlreadyCrawled {
 			log.Println("URL already crawled:", url)
-		} else if val == NotRecentlyCrawled {
+		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)
