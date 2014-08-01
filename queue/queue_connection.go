@@ -39,9 +39,15 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 
 	go func() {
 		select {
-		case e := <-queueConnection.notifyClose:
+		case e, ok := <-queueConnection.notifyClose:
 			if e != nil && !e.Recover {
 				queueConnection.HandleFatalError(e)
+			}
+
+			if !ok {
+				queueConnection.Channel.Close()
+				queueConnection.Connection.Close()
+				queueConnection.notifyClose = nil
 			}
 		}
 	}()
