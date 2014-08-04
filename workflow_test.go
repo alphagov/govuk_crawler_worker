@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -102,9 +101,8 @@ var _ = Describe("Workflow", func() {
 				Expect(len(outbound)).To(Equal(1))
 
 				go AcknowledgeItem(outbound, ttlHashSet)
-				time.Sleep(time.Millisecond)
 
-				Expect(len(outbound)).To(Equal(0))
+				Eventually(outbound).Should(HaveLen(0))
 
 				exists, err = ttlHashSet.Exists(url)
 				Expect(err).To(BeNil())
@@ -225,13 +223,12 @@ var _ = Describe("Workflow", func() {
 					}
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
-				time.Sleep(time.Millisecond)
 
 				publish <- url
-				time.Sleep(time.Millisecond)
+				Expect(len(publish)).To(Equal(1))
 
-				Expect(len(publish)).To(Equal(0))
-				Expect(len(outbound)).To(Equal(0))
+				Eventually(publish).Should(HaveLen(0))
+				Eventually(outbound).Should(HaveLen(0))
 
 				// Close the channel to stop the goroutine for PublishURLs.
 				close(publish)
