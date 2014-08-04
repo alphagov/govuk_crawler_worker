@@ -56,6 +56,8 @@ func (t *TTLHashSet) Incr(key string) (bool, error) {
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	t.client.Append("INCR", localKey)
 	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
 
@@ -70,7 +72,6 @@ func (t *TTLHashSet) Incr(key string) (bool, error) {
 		t.reconnectIfIOError(err)
 		return expireCmd, err
 	}
-	t.mutex.Unlock()
 
 	success := incrCmd && expireCmd
 	return success, err
