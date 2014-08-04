@@ -49,6 +49,8 @@ var _ = Describe("QueueConnection", func() {
 				fatalErrs <- err
 			}
 
+			connection.HandleChannelClose = func(_ string) {}
+
 			_, err = connection.QueueDeclare(queueName)
 			Expect(err).To(BeNil())
 		})
@@ -98,6 +100,7 @@ var _ = Describe("QueueConnection", func() {
 
 		BeforeEach(func() {
 			connection, connectionErr = NewQueueConnection(amqpAddr)
+			connection.HandleChannelClose = func(_ string) {}
 		})
 
 		AfterEach(func() {
@@ -182,6 +185,9 @@ var _ = Describe("QueueConnection", func() {
 			consumer, err = NewQueueConnection(amqpAddr)
 			Expect(err).To(BeNil())
 			Expect(consumer).ToNot(BeNil())
+
+			publisher.HandleChannelClose = func(_ string) {}
+			consumer.HandleChannelClose = func(_ string) {}
 		})
 
 		AfterEach(func() {

@@ -34,6 +34,9 @@ var _ = Describe("HealthCheck", func() {
 			amqpAddr, exchangeName, queueName)
 		Expect(queueManagerErr).To(BeNil())
 
+		queueManager.Consumer.HandleChannelClose = func(_ string) {}
+		queueManager.Producer.HandleChannelClose = func(_ string) {}
+
 		ttlHashSet, ttlHashSetErr := ttl_hash_set.NewTTLHashSet(prefix, redisAddr)
 		Expect(ttlHashSetErr).To(BeNil())
 
@@ -60,6 +63,9 @@ var _ = Describe("HealthCheck", func() {
 			queueManager, queueManagerErr = queue.NewQueueManager(
 				amqpAddr, exchangeName, queueName)
 			Expect(queueManagerErr).To(BeNil())
+
+			queueManager.Consumer.HandleChannelClose = func(_ string) {}
+			queueManager.Producer.HandleChannelClose = func(_ string) {}
 
 			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
@@ -104,6 +110,9 @@ var _ = Describe("HealthCheck", func() {
 			queueManager, queueManagerErr = queue.NewQueueManager(
 				amqpAddr, exchangeName, queueName)
 			Expect(queueManagerErr).To(BeNil())
+
+			queueManager.Consumer.HandleChannelClose = func(_ string) {}
+			queueManager.Producer.HandleChannelClose = func(_ string) {}
 
 			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr)
 			Expect(ttlHashSetErr).To(BeNil())
