@@ -15,23 +15,49 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
-	for item := range inbound {
-		start := time.Now()
-		url := item.URL()
+func ReadFromQueue(
+	inboundChannel <-chan amqp.Delivery,
+	rootURL *url.URL,
+	ttlHashSet *ttl_hash_set.TTLHashSet,
+	blacklistPaths []string,
+	crawlerThreads int,
+) chan *CrawlerMessageItem {
+	outboundChannel := make(chan *CrawlerMessageItem, crawlerThreads)
 
-		_, err := ttlHashSet.Add(url)
-		if err != nil {
-			item.Reject(false)
-			log.Println("Acknowledge failed (rejecting):", url, err)
-			continue
+	readLoop := func(
+		inbound <-chan amqp.Delivery,
+		outbound chan<- *CrawlerMessageItem,
+		ttlHashSet *ttl_hash_set.TTLHashSet,
+		blacklistPaths []string,
+	) {
+		for item := range inbound {
+			start := time.Now()
+			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
+
+			exists, err := ttlHashSet.Exists(message.URL())
+			if err != nil {
+				item.Reject(true)
+				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
+				continue
+			}
+
+			if exists {
+				log.Println("URL already crawled:", message.URL())
+				if err = item.Ack(false); err != nil {
+					log.Println("Ack failed (ReadFromQueue): ", message.URL())
+				}
+				continue
+			}
+
+			outbound <- message
+
+			util.StatsDTiming("read_from_queue", start, time.Now())
 		}
-
-		item.Ack(false)
-		log.Println("Acknowledged:", url)
-
-		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
+
+	go readLoop(inboundChannel, outboundChannel, ttlHashSet, blacklistPaths)
+
+	return outboundChannel
 }
 
 func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
@@ -82,7 +108,9 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			if item.IsHTML() {
 				extract <- item
 			} else {
-				item.Ack(false)
+				if err = item.Ack(false); err != nil {
+					log.Println("Ack failed (CrawlURL): ", item.URL())
+				}
 			}
 
 			util.StatsDTiming("crawl_url", start, time.Now())
@@ -201,39 +229,23 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 	}
 }
 
-func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
-	outboundChannel := make(chan *CrawlerMessageItem, 2)
+func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_set.TTLHashSet) {
+	for item := range inbound {
+		start := time.Now()
+		url := item.URL()
 
-	readLoop := func(
-		inbound <-chan amqp.Delivery,
-		outbound chan<- *CrawlerMessageItem,
-		ttlHashSet *ttl_hash_set.TTLHashSet,
-		blacklistPaths []string,
-	) {
-		for item := range inbound {
-			start := time.Now()
-			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
-
-			exists, err := ttlHashSet.Exists(message.URL())
-			if err != nil {
-				item.Reject(true)
-				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
-				continue
-			}
-
-			if exists {
-				log.Println("URL already crawled:", message.URL())
-				item.Ack(false)
-				continue
-			}
-
-			outbound <- message
-
-			util.StatsDTiming("read_from_queue", start, time.Now())
+		_, err := ttlHashSet.Add(url)
+		if err != nil {
+			item.Reject(false)
+			log.Println("Acknowledge failed (rejecting):", url, err)
+			continue
 		}
+
+		if err = item.Ack(false); err != nil {
+			log.Println("Ack failed (AcknowledgeItem): ", item.URL())
+		}
+		log.Println("Acknowledged:", url)
+
+		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
-
-	go readLoop(inboundChannel, outboundChannel, ttlHashSet, blacklistPaths)
-
-	return outboundChannel
 }
