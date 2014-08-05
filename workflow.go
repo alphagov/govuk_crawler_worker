@@ -37,7 +37,9 @@ func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHas
 
 			if exists {
 				log.Println("URL already crawled:", message.URL())
-				item.Ack(false)
+				if err = item.Ack(false); err != nil {
+					log.Println("Ack failed (ReadFromQueue): ", message.URL())
+				}
 				continue
 			}
 
@@ -100,7 +102,9 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			if item.IsHTML() {
 				extract <- item
 			} else {
-				item.Ack(false)
+				if err = item.Ack(false); err != nil {
+					log.Println("Ack failed (CrawlURL): ", item.URL())
+				}
 			}
 
 			util.StatsDTiming("crawl_url", start, time.Now())
@@ -231,7 +235,9 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 			continue
 		}
 
-		item.Ack(false)
+		if err = item.Ack(false); err != nil {
+			log.Println("Ack failed (AcknowledgeItem): ", item.URL())
+		}
 		log.Println("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
