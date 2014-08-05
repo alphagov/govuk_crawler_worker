@@ -96,7 +96,7 @@ func main() {
 		crawlerThreadsInt = 1
 	}
 
-	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths))
+	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths), crawlerThreadsInt)
 	persistChan = CrawlURL(crawlChan, crawler, crawlerThreadsInt)
 	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
 	publishChan, acknowledgeChan = ExtractURLs(parseChan)

@@ -15,8 +15,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func ReadFromQueue(inboundChannel <-chan amqp.Delivery, rootURL *url.URL, ttlHashSet *ttl_hash_set.TTLHashSet, blacklistPaths []string) chan *CrawlerMessageItem {
-	outboundChannel := make(chan *CrawlerMessageItem, 2)
+func ReadFromQueue(
+	inboundChannel <-chan amqp.Delivery,
+	rootURL *url.URL,
+	ttlHashSet *ttl_hash_set.TTLHashSet,
+	blacklistPaths []string,
+	crawlerThreads int,
+) chan *CrawlerMessageItem {
+	outboundChannel := make(chan *CrawlerMessageItem, crawlerThreads)
 
 	readLoop := func(
 		inbound <-chan amqp.Delivery,
