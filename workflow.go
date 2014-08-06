@@ -51,7 +51,7 @@ func ReadFromQueue(
 			}
 
 			if crawlCount == AlreadyCrawled {
-				log.Println("URL already crawled:", message.URL())
+				log.Println("URL read from queue already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (ReadFromQueue): ", message.URL())
 				}
@@ -250,7 +250,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 		}
 
 		if crawlCount == AlreadyCrawled {
-			log.Println("URL already crawled:", url)
+			log.Println("URL extracted from page already crawled:", url)
 		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
