@@ -25,7 +25,8 @@ var _ = Describe("HealthCheck", func() {
 
 	BeforeEach(func() {
 		amqpAddr = util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
-		exchangeName, queueName = "test-health-check-exchange", "test-health-check-queue"
+		exchangeName = "govuk_crawler_worker-test-health-check-exchange"
+		queueName = "govuk_crawler_worker-test-health-check-queue"
 		redisAddr = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 		prefix = "govuk_mirror_crawler_health_check_test"
 	})

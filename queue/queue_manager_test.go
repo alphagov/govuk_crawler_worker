@@ -23,7 +23,9 @@ var _ = Describe("QueueManager", func() {
 	})
 
 	It("provides a way of closing connections cleanly", func() {
-		exchangeName, queueName := "test-manager-exchange", "test-manager-queue"
+		exchangeName := "govuk_crawler_worker-test-manager-exchange"
+		queueName := "govuk_crawler_worker-test-manager-queue"
+
 		queueManager, err := NewQueueManager(
 			amqpAddr,
 			exchangeName,
@@ -51,7 +53,8 @@ var _ = Describe("QueueManager", func() {
 			queueManagerErr error
 		)
 
-		exchangeName, queueName := "test-handler-exchange", "test-handler-queue"
+		exchangeName := "govuk_crawler_worker-test-handler-exchange"
+		queueName := "govuk_crawler_worker-test-handler-queue"
 
 		BeforeEach(func() {
 			queueManager, queueManagerErr = NewQueueManager(
