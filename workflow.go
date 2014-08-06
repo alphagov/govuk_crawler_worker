@@ -268,7 +268,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
-		_, err := ttlHashSet.Set(url, AlreadyCrawled)
+		err := ttlHashSet.Set(url, AlreadyCrawled)
 		if err != nil {
 			item.Reject(false)
 			log.Println("Acknowledge failed (rejecting):", url, err)

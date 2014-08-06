@@ -246,7 +246,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Expect(len(deliveries)).To(Equal(0))
 
-				_, err = ttlHashSet.Incr(url)
+				err = ttlHashSet.Incr(url)
 				Expect(err).To(BeNil())
 
 				publish := make(chan string, 1)

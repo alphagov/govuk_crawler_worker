@@ -51,7 +51,7 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 	}, nil
 }
 
-func (t *TTLHashSet) Incr(key string) (bool, error) {
+func (t *TTLHashSet) Incr(key string) error {
 	localKey := prefixKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
@@ -61,35 +61,34 @@ func (t *TTLHashSet) Incr(key string) (bool, error) {
 	t.client.Append("INCR", localKey)
 	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
 
-	incrCmd, err := t.client.GetReply().Bool()
+	_, err := t.client.GetReply().Bool()
 	if err != nil {
 		t.reconnectIfIOError(err)
-		return incrCmd, err
+		return err
 	}
 
-	expireCmd, err := t.client.GetReply().Bool()
+	_, err = t.client.GetReply().Bool()
 	if err != nil {
 		t.reconnectIfIOError(err)
-		return expireCmd, err
+		return err
 	}
 
-	success := incrCmd && expireCmd
-	return success, err
+	return err
 }
 
-func (t *TTLHashSet) Set(key string, val int) (bool, error) {
+func (t *TTLHashSet) Set(key string, val int) error {
 	localKey := prefixKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
-	set, err := t.client.Cmd("SETEX", localKey, ttlExpiryTime.Seconds(), val).Bool()
+	_, err := t.client.Cmd("SETEX", localKey, ttlExpiryTime.Seconds(), val).Bool()
 	t.mutex.Unlock()
 
 	if err != nil {
 		t.reconnectIfIOError(err)
 	}
 
-	return set, err
+	return err
 }
 
 func (t *TTLHashSet) Close() error {

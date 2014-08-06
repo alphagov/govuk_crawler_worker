@@ -53,7 +53,7 @@ var _ = Describe("TTLHashSet", func() {
 		})
 
 		It("should recover from connection errors", func() {
-			_, _ = ttlHashSet.Incr(key)
+			_ = ttlHashSet.Incr(key)
 
 			proxy.KillConnected()
 			exists, err := ttlHashSet.Exists(key)
@@ -68,7 +68,7 @@ var _ = Describe("TTLHashSet", func() {
 		})
 
 		It("should return errors until reconnected", func() {
-			_, _ = ttlHashSet.Incr(key)
+			_ = ttlHashSet.Incr(key)
 			proxy.Close()
 
 			start := time.Now()
@@ -135,10 +135,9 @@ var _ = Describe("TTLHashSet", func() {
 		It("increments a key sequentially", func() {
 			key := "foo.bar.baz"
 			for i := 1; i < 5; i++ {
-				incr, incrErr := ttlHashSet.Incr(key)
+				incrErr := ttlHashSet.Incr(key)
 
 				Expect(incrErr).To(BeNil())
-				Expect(incr).To(Equal(true))
 
 				val, getErr := ttlHashSet.Get(key)
 
@@ -164,10 +163,9 @@ var _ = Describe("TTLHashSet", func() {
 
 			It("should expose a positive TTL on key that exists", func() {
 				key := "some.ttl.key"
-				added, addErr := ttlHashSet.Incr(key)
+				addErr := ttlHashSet.Incr(key)
 
 				Expect(addErr).To(BeNil())
-				Expect(added).To(Equal(true))
 
 				ttl, err := ttlHashSet.TTL(key)
 
