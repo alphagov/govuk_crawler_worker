@@ -266,15 +266,15 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedUrl))
 		})
-	})
 
-	It("removes paths that are blacklisted", func() {
-		item := NewCrawlerMessageItem(delivery, rootURL, []string{"/trade-tariff"})
-		item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`)
+		It("removes paths that are blacklisted", func() {
+			item := NewCrawlerMessageItem(delivery, rootURL, []string{"/trade-tariff"})
+			item.HTMLBody = []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`)
 
-		urls, err := item.ExtractURLs()
+			urls, err := item.ExtractURLs()
 
-		Expect(err).To(BeNil())
-		Expect(len(urls)).To(Equal(1))
+			Expect(err).To(BeNil())
+			Expect(len(urls)).To(Equal(1))
+		})
 	})
 })
