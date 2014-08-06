@@ -70,6 +70,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 		Expect(item.IsHTML()).To(BeTrue())
 	})
 
+	It("detects when a URL is blacklisted", func() {
+		delivery = amqp.Delivery{Body: []byte("https://www.example.com/blacklisted")}
+		item := NewCrawlerMessageItem(delivery, rootURL, []string{"/blacklisted"})
+		Expect(item.IsBlacklisted()).To(BeTrue())
+	})
+
 	It("returns its URL", func() {
 		Expect(item.URL()).To(Equal(testUrl))
 	})

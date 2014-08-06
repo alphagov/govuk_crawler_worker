@@ -284,6 +284,36 @@ var _ = Describe("Workflow", func() {
 
 				close(outbound)
 			})
+
+			It("drops CrawlerMessageItems containing a blacklisted URL", func() {
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				url := "https://www.gov.uk/blacklisted"
+				err = queueManager.Publish("#", "text/plain", url)
+				Expect(err).To(BeNil())
+
+				// Because the `deliveries` channel is unbuffered we're forcing
+				// Go to move any items it knows of into our buffered channel
+				// so that we can check its length.
+				deliveriesBuffer := make(chan amqp.Delivery, 1)
+				Expect(len(deliveriesBuffer)).To(Equal(0))
+				go func() {
+					select {
+					case item := <-deliveries:
+						deliveriesBuffer <- item
+					}
+				}()
+				Eventually(deliveriesBuffer).Should(HaveLen(1))
+
+				ReadFromQueue(deliveriesBuffer, rootURL, ttlHashSet, []string{"/blacklisted"}, 1)
+
+				Eventually(func() (int, error) {
+					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
+					return queueInfo.Messages, err
+				}).Should(Equal(0))
+			})
 		})
 	})
 })

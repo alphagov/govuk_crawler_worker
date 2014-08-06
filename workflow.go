@@ -34,6 +34,12 @@ func ReadFromQueue(
 			start := time.Now()
 			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
 
+			if message.IsBlacklisted() {
+				item.Ack(false)
+				log.Println("URL is blacklisted (acknowledging):", message.URL())
+				continue
+			}
+
 			exists, err := ttlHashSet.Exists(message.URL())
 			if err != nil {
 				item.Reject(true)
