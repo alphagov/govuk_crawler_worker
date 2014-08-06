@@ -15,6 +15,9 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const NotRecentlyCrawled int = 0
+const AlreadyCrawled int = -1
+
 func ReadFromQueue(
 	inboundChannel <-chan amqp.Delivery,
 	rootURL *url.URL,
@@ -40,14 +43,14 @@ func ReadFromQueue(
 				continue
 			}
 
-			exists, err := ttlHashSet.Exists(message.URL())
+			crawlCount, err := ttlHashSet.Get(message.URL())
 			if err != nil {
 				item.Reject(true)
 				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
-			if exists {
+			if crawlCount == AlreadyCrawled {
 				log.Println("URL already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (ReadFromQueue): ", message.URL())
@@ -66,7 +69,13 @@ func ReadFromQueue(
 	return outboundChannel
 }
 
-func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Crawler, crawlerThreads int) <-chan *CrawlerMessageItem {
+func CrawlURL(
+	ttlHashSet *ttl_hash_set.TTLHashSet,
+	crawlChannel <-chan *CrawlerMessageItem,
+	crawler *http_crawler.Crawler,
+	crawlerThreads int,
+	maxCrawlRetries int,
+) <-chan *CrawlerMessageItem {
 	if crawlerThreads < 1 {
 		panic("cannot start a negative or zero number of crawler threads")
 	}
@@ -74,9 +83,11 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 	extractChannel := make(chan *CrawlerMessageItem, 2)
 
 	crawlLoop := func(
+		ttlHashSet *ttl_hash_set.TTLHashSet,
 		crawl <-chan *CrawlerMessageItem,
 		extract chan<- *CrawlerMessageItem,
 		crawler *http_crawler.Crawler,
+		maxCrawlRetries int,
 	) {
 		for item := range crawl {
 			start := time.Now()
@@ -88,13 +99,28 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 			}
 			log.Println("Crawling URL:", u)
 
+			crawlCount, err := ttlHashSet.Get(u.String())
+			if err != nil {
+				item.Reject(false)
+				log.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
+				continue
+			}
+
+			if crawlCount == maxCrawlRetries {
+				item.Reject(false)
+				log.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
+				continue
+			}
+
 			body, err := crawler.Crawl(u)
 			if err != nil {
 				if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
 					item.Reject(true)
 					log.Println("Couldn't crawl (requeueing):", u.String(), err)
 
-					if err == http_crawler.RetryRequest429Error {
+					if err == http_crawler.RetryRequest5XXError {
+						ttlHashSet.Incr(u.String())
+					} else if err == http_crawler.RetryRequest429Error {
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
@@ -124,7 +150,7 @@ func CrawlURL(crawlChannel <-chan *CrawlerMessageItem, crawler *http_crawler.Cra
 	}
 
 	for i := 1; i <= crawlerThreads; i++ {
-		go crawlLoop(crawlChannel, extractChannel, crawler)
+		go crawlLoop(ttlHashSet, crawlChannel, extractChannel, crawler, maxCrawlRetries)
 	}
 
 	return extractChannel
@@ -216,14 +242,16 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
 	for url := range publish {
 		start := time.Now()
-		exists, err := ttlHashSet.Exists(url)
+		crawlCount, err := ttlHashSet.Get(url)
 
 		if err != nil {
 			log.Println("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
-		if !exists {
+		if crawlCount == AlreadyCrawled {
+			log.Println("URL already crawled:", url)
+		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)
@@ -240,7 +268,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
-		_, err := ttlHashSet.Add(url)
+		err := ttlHashSet.Set(url, AlreadyCrawled)
 		if err != nil {
 			item.Reject(false)
 			log.Println("Acknowledge failed (rejecting):", url, err)

@@ -85,7 +85,7 @@ var _ = Describe("Workflow", func() {
 
 				exists, err := ttlHashSet.Exists(url)
 				Expect(err).To(BeNil())
-				Expect(exists).To(BeFalse())
+				Expect(exists).To(Equal(false))
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
@@ -109,7 +109,7 @@ var _ = Describe("Workflow", func() {
 
 				exists, err = ttlHashSet.Exists(url)
 				Expect(err).To(BeNil())
-				Expect(exists).To(BeTrue())
+				Expect(exists).To(Equal(true))
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)
@@ -129,12 +129,12 @@ var _ = Describe("Workflow", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
 				body := `<a href="gov.uk">bar</a>`
-				server := testServer(200, body)
+				server := testServer(http.StatusOK, body)
 
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
 				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 
-				crawled := CrawlURL(outbound, crawler, 1)
+				crawled := CrawlURL(ttlHashSet, outbound, crawler, 1, 1)
 
 				Expect((<-crawled).HTMLBody[0:24]).To(Equal([]byte(body)))
 
@@ -142,15 +142,48 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 
+			It("doesn't crawl an item that has been retried too many times", func() {
+				body := `<a href="gov.uk">bar</a>`
+				server := testServer(http.StatusInternalServerError, body)
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				Expect(len(crawlChan)).To(Equal(0))
+
+				maxRetries := 4
+
+				err = queueManager.Publish("#", "text/plain", server.URL)
+				Expect(err).To(BeNil())
+				Eventually(crawlChan).Should(HaveLen(1))
+
+				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				Eventually(crawlChan).Should(HaveLen(0))
+
+				Eventually(func() (int, error) {
+					return ttlHashSet.Get(server.URL)
+				}).Should(Equal(maxRetries))
+
+				Eventually(func() (int, error) {
+					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
+					return queueInfo.Messages, err
+				}).Should(Equal(0))
+				Expect(len(crawled)).To(Equal(0))
+
+				server.Close()
+				close(crawlChan)
+			})
+
 			It("expects the number of goroutines to run to be a positive integer", func() {
 				outbound := make(chan *CrawlerMessageItem, 1)
 
 				Expect(func() {
-					CrawlURL(outbound, crawler, 0)
+					CrawlURL(ttlHashSet, outbound, crawler, 0, 1)
 				}).To(Panic())
 
 				Expect(func() {
-					CrawlURL(outbound, crawler, -1)
+					CrawlURL(ttlHashSet, outbound, crawler, -1, 1)
 				}).To(Panic())
 			})
 		})
@@ -213,7 +246,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Expect(len(deliveries)).To(Equal(0))
 
-				_, err = ttlHashSet.Add(url)
+				err = ttlHashSet.Incr(url)
 				Expect(err).To(BeNil())
 
 				publish := make(chan string, 1)

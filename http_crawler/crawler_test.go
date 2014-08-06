@@ -56,7 +56,7 @@ var _ = Describe("Crawl", func() {
 						return
 					}
 
-					res.WriteHeader(200)
+					res.WriteHeader(http.StatusOK)
 					res.Write([]byte("You've successfully logged in with basic auth!"))
 				}
 			}

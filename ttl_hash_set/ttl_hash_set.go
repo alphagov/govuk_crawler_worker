@@ -51,21 +51,44 @@ func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
 	}, nil
 }
 
-func (t *TTLHashSet) Add(key string) (bool, error) {
+func (t *TTLHashSet) Incr(key string) error {
 	localKey := prefixKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
-	t.client.Append("SET", localKey, 1)
+	defer t.mutex.Unlock()
+
+	t.client.Append("INCR", localKey)
 	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
-	add, err := t.client.GetReply().Bool()
+
+	_, err := t.client.GetReply().Bool()
+	if err != nil {
+		t.reconnectIfIOError(err)
+		return err
+	}
+
+	_, err = t.client.GetReply().Bool()
+	if err != nil {
+		t.reconnectIfIOError(err)
+		return err
+	}
+
+	return err
+}
+
+func (t *TTLHashSet) Set(key string, val int) error {
+	localKey := prefixKey(t.prefix, key)
+
+	// Use pipelining to set the key and set expiry in one go.
+	t.mutex.Lock()
+	_, err := t.client.Cmd("SETEX", localKey, ttlExpiryTime.Seconds(), val).Bool()
 	t.mutex.Unlock()
 
 	if err != nil {
 		t.reconnectIfIOError(err)
 	}
 
-	return add, err
+	return err
 }
 
 func (t *TTLHashSet) Close() error {
@@ -74,6 +97,24 @@ func (t *TTLHashSet) Close() error {
 	t.mutex.Unlock()
 
 	return err
+}
+
+func (t *TTLHashSet) Get(key string) (int, error) {
+	localKey := prefixKey(t.prefix, key)
+
+	t.mutex.Lock()
+	get, err := t.client.Cmd("GET", localKey).Int()
+	t.mutex.Unlock()
+
+	if err != nil {
+		if err.Error() == "integer value is not available for this reply type" {
+			return get, nil
+		} else {
+			t.reconnectIfIOError(err)
+		}
+	}
+
+	return get, err
 }
 
 func (t *TTLHashSet) Exists(key string) (bool, error) {
