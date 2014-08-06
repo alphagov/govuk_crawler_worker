@@ -27,7 +27,7 @@ var _ = Describe("QueueConnection", func() {
 			connection *QueueConnection
 			proxy      *util.ProxyTCP
 			proxyAddr  string           = "localhost:5673"
-			queueName  string           = "test-crawler-queue"
+			queueName  string           = "govuk_crawler_worker-test-crawler-queue"
 			fatalErrs  chan *amqp.Error = make(chan *amqp.Error)
 		)
 
@@ -118,7 +118,7 @@ var _ = Describe("QueueConnection", func() {
 
 		It("can declare an exchange", func() {
 			var err error
-			exchange := "some-exchange"
+			exchange := "govuk_crawler_worker-some-exchange"
 
 			err = connection.ExchangeDeclare(exchange, "direct")
 			Expect(err).To(BeNil())
@@ -131,7 +131,7 @@ var _ = Describe("QueueConnection", func() {
 			var (
 				err   error
 				queue amqp.Queue
-				name  = "some-queue"
+				name  = "govuk_crawler_worker-some-queue"
 			)
 
 			queue, err = connection.QueueDeclare(name)
@@ -146,8 +146,8 @@ var _ = Describe("QueueConnection", func() {
 		It("can bind a queue to an exchange", func() {
 			var err error
 
-			exchangeName := "some-binding-exchange"
-			queueName := "some-binding-queue"
+			exchangeName := "govuk_crawler_worker-some-binding-exchange"
+			queueName := "govuk_crawler_worker-some-binding-queue"
 
 			err = connection.ExchangeDeclare(exchangeName, "direct")
 			Expect(err).To(BeNil())
@@ -174,8 +174,8 @@ var _ = Describe("QueueConnection", func() {
 			err       error
 		)
 
-		exchangeName := "test-crawler-exchange"
-		queueName := "test-crawler-queue"
+		exchangeName := "govuk_crawler_worker-test-crawler-exchange"
+		queueName := "govuk_crawler_worker-test-crawler-queue"
 
 		BeforeEach(func() {
 			publisher, err = NewQueueConnection(amqpAddr)

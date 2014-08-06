@@ -24,7 +24,8 @@ var _ = Describe("Workflow", func() {
 	Describe("Acknowledging items", func() {
 		amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 		redisAddr := util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
-		exchangeName, queueName := "test-workflow-exchange", "test-workflow-queue"
+		exchangeName := "govuk_crawler_worker-test-workflow-exchange"
+		queueName := "govuk_crawler_worker-test-workflow-queue"
 		prefix := "govuk_mirror_crawler_workflow_test"
 
 		var (
