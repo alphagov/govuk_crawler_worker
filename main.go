@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -33,43 +35,116 @@ var (
 	mirrorRoot        = os.Getenv("MIRROR_ROOT")
 )
 
+const (
+	DEBUG int = iota
+	INFO
+	WARN
+	ERROR
+	FATAL
+)
+
+var (
+	LogDebug   *log.Logger
+	LogInfo    *log.Logger
+	LogWarning *log.Logger
+	LogError   *log.Logger
+	LogFatal   *log.Logger
+
+	debugHandle   io.Writer
+	infoHandle    io.Writer
+	warningHandle io.Writer
+	errorHandle   io.Writer
+	fatalHandle   io.Writer
+)
+
 const versionNumber string = "0.1.0"
 
-func main() {
+func init() {
 	versionFlag := flag.Bool("version", false, "show version and exit")
+	logLevel := flag.Int("loglevel", ERROR, "logging level")
 	flag.Parse()
+
+	if *logLevel > DEBUG {
+		debugHandle = ioutil.Discard
+	} else {
+		debugHandle = os.Stderr
+	}
+	if *logLevel > INFO {
+		infoHandle = ioutil.Discard
+	} else {
+		infoHandle = os.Stdout
+	}
+	if *logLevel > WARN {
+		warningHandle = ioutil.Discard
+	} else {
+		warningHandle = os.Stderr
+	}
+	if *logLevel > ERROR {
+		errorHandle = ioutil.Discard
+	} else {
+		errorHandle = os.Stderr
+	}
+	if *logLevel > FATAL {
+		fatalHandle = ioutil.Discard
+	} else {
+		fatalHandle = os.Stderr
+	}
+
+	LogDebug = log.New(debugHandle,
+		"TRACE: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+
+	LogInfo = log.New(infoHandle,
+		"INFO: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+
+	LogWarning = log.New(warningHandle,
+		"WARNING: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+
+	LogError = log.New(errorHandle,
+		"ERROR: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+
+	LogFatal = log.New(fatalHandle,
+		"FATAL: ",
+		log.Ldate|log.Ltime|log.Lshortfile)
+
 	if *versionFlag {
 		fmt.Println(versionNumber)
 		os.Exit(0)
-	}
-	if mirrorRoot == "" {
-		log.Fatalln("MIRROR_ROOT environment variable not set")
-	}
-
-	rootURL, err := url.Parse(rootURLString)
-	if err != nil {
-		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
 	if os.Getenv("GOMAXPROCS") == "" {
 		// Use all available cores if not otherwise specified
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
-	log.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
+	LogInfo.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
+}
+
+func main() {
+	if mirrorRoot == "" {
+		LogFatal.Fatalln("MIRROR_ROOT environment variable not set")
+	}
+
+	rootURL, err := url.Parse(rootURLString)
+	if err != nil {
+		LogFatal.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
+	}
 
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
 	if err != nil {
-		log.Fatalln(err)
+		LogFatal.Fatalln(err)
 	}
 	defer ttlHashSet.Close()
-	log.Println("Connected to Redis service:", ttlHashSet)
+	LogInfo.Println("Connected to Redis service:", ttlHashSet)
 
 	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
 	if err != nil {
-		log.Fatalln(err)
+		LogFatal.Fatalln(err)
 	}
 	defer queueManager.Close()
-	log.Println("Connected to AMQP service:", queueManager)
+	LogInfo.Println("Connected to AMQP service:", queueManager)
 
 	var crawler *http_crawler.Crawler
 	if basicAuthUsername != "" && basicAuthPassword != "" {
@@ -78,13 +153,13 @@ func main() {
 	} else {
 		crawler = http_crawler.NewCrawler(rootURL, versionNumber, nil)
 	}
-	log.Println("Generated crawler:", crawler)
+	LogInfo.Println("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {
-		log.Fatalln(err)
+		LogFatal.Fatalln(err)
 	}
-	log.Println("Generated delivery (consumer) channel:", deliveries)
+	LogInfo.Println("Generated delivery (consumer) channel:", deliveries)
 
 	dontQuit := make(chan struct{})
 
@@ -113,7 +188,7 @@ func main() {
 
 	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 	http.HandleFunc("/healthcheck", healthCheck.HTTPHandler())
-	log.Fatalln(http.ListenAndServe(":"+httpPort, nil))
+	LogFatal.Fatalln(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit
 }

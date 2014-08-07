@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -39,21 +38,21 @@ func ReadFromQueue(
 
 			if message.IsBlacklisted() {
 				item.Ack(false)
-				log.Println("URL is blacklisted (acknowledging):", message.URL())
+				LogInfo.Println("URL is blacklisted (acknowledging):", message.URL())
 				continue
 			}
 
 			crawlCount, err := ttlHashSet.Get(message.URL())
 			if err != nil {
 				item.Reject(true)
-				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
+				LogError.Println("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
 			if crawlCount == AlreadyCrawled {
-				log.Println("URL read from queue already crawled:", message.URL())
+				LogInfo.Println("URL read from queue already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
-					log.Println("Ack failed (ReadFromQueue): ", message.URL())
+					LogError.Println("Ack failed (ReadFromQueue): ", message.URL())
 				}
 				continue
 			}
@@ -94,21 +93,21 @@ func CrawlURL(
 			u, err := url.Parse(item.URL())
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
+				LogWarning.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
 				continue
 			}
-			log.Println("Crawling URL:", u)
+			LogInfo.Println("Crawling URL:", u)
 
 			crawlCount, err := ttlHashSet.Get(u.String())
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
+				LogError.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
 				continue
 			}
 
 			if crawlCount == maxCrawlRetries {
 				item.Reject(false)
-				log.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
+				LogError.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
 				continue
 			}
 
@@ -121,15 +120,15 @@ func CrawlURL(
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
-						log.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
+						LogWarning.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
 						time.Sleep(sleepTime)
 					}
 
 					item.Reject(true)
-					log.Println("Couldn't crawl (requeueing):", u.String(), err)
+					LogError.Println("Couldn't crawl (requeueing):", u.String(), err)
 				} else {
 					item.Reject(false)
-					log.Println("Couldn't crawl (rejecting):", u.String(), err)
+					LogError.Println("Couldn't crawl (rejecting):", u.String(), err)
 				}
 
 				continue
@@ -141,7 +140,7 @@ func CrawlURL(
 				extract <- item
 			} else {
 				if err = item.Ack(false); err != nil {
-					log.Println("Ack failed (CrawlURL): ", item.URL())
+					LogError.Println("Ack failed (CrawlURL): ", item.URL())
 				}
 			}
 
@@ -169,7 +168,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", err)
+				LogError.Println("Couldn't write to disk (rejecting):", err)
 				continue
 			}
 
@@ -179,7 +178,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				LogError.Println("Couldn't write to disk (rejecting):", filePath, err)
 				continue
 			}
 
@@ -187,11 +186,11 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				LogError.Println("Couldn't write to disk (rejecting):", filePath, err)
 				continue
 			}
 
-			log.Println("Wrote URL body to disk for:", item.URL())
+			LogInfo.Println("Wrote URL body to disk for:", item.URL())
 			extract <- item
 
 			util.StatsDTiming("write_to_disk", start, time.Now())
@@ -217,12 +216,12 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 			urls, err := item.ExtractURLs()
 			if err != nil {
 				item.Reject(false)
-				log.Println("ExtractURLs (rejecting):", string(item.Body), err)
+				LogError.Println("ExtractURLs (rejecting):", string(item.Body), err)
 
 				continue
 			}
 
-			log.Println("Extracted URLs:", len(urls))
+			LogInfo.Println("Extracted URLs:", len(urls))
 
 			for _, u := range urls {
 				publish <- u.String()
@@ -245,16 +244,16 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 		crawlCount, err := ttlHashSet.Get(url)
 
 		if err != nil {
-			log.Println("Couldn't check existence of URL:", url, err)
+			LogError.Println("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
 		if crawlCount == AlreadyCrawled {
-			log.Println("URL extracted from page already crawled:", url)
+			LogInfo.Println("URL extracted from page already crawled:", url)
 		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
-				log.Fatalln("Delivery failed:", url, err)
+				LogFatal.Fatalln("Delivery failed:", url, err)
 			}
 		}
 
@@ -271,14 +270,14 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		err := ttlHashSet.Set(url, AlreadyCrawled)
 		if err != nil {
 			item.Reject(false)
-			log.Println("Acknowledge failed (rejecting):", url, err)
+			LogError.Println("Acknowledge failed (rejecting):", url, err)
 			continue
 		}
 
 		if err = item.Ack(false); err != nil {
-			log.Println("Ack failed (AcknowledgeItem): ", item.URL())
+			LogError.Println("Ack failed (AcknowledgeItem): ", item.URL())
 		}
-		log.Println("Acknowledged:", url)
+		LogInfo.Println("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
