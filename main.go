@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
@@ -35,13 +35,39 @@ var (
 
 const versionNumber string = "0.1.0"
 
-func main() {
+func init() {
+	debugFlag := flag.Bool("debug", false, "debug logging")
+	quietFlag := flag.Bool("quiet", false, "surpress all logging except errors")
+	verboseFlag := flag.Bool("verbose", false, "verbose logging")
 	versionFlag := flag.Bool("version", false, "show version and exit")
 	flag.Parse()
+
+	switch {
+	case *debugFlag:
+		log.SetLevel(log.DebugLevel)
+	case *quietFlag:
+		log.SetLevel(log.ErrorLevel)
+	case *verboseFlag:
+		log.SetLevel(log.InfoLevel)
+	default:
+		log.SetLevel(log.WarnLevel)
+	}
+
+	log.SetOutput(os.Stdout)
+
 	if *versionFlag {
 		fmt.Println(versionNumber)
 		os.Exit(0)
 	}
+
+	if os.Getenv("GOMAXPROCS") == "" {
+		// Use all available cores if not otherwise specified
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+	log.Infoln(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
+}
+
+func main() {
 	if mirrorRoot == "" {
 		log.Fatalln("MIRROR_ROOT environment variable not set")
 	}
@@ -51,25 +77,19 @@ func main() {
 		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
-	if os.Getenv("GOMAXPROCS") == "" {
-		// Use all available cores if not otherwise specified
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
-	log.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
-
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer ttlHashSet.Close()
-	log.Println("Connected to Redis service:", ttlHashSet)
+	log.Infoln("Connected to Redis service:", ttlHashSet)
 
 	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer queueManager.Close()
-	log.Println("Connected to AMQP service:", queueManager)
+	log.Infoln("Connected to AMQP service:", queueManager)
 
 	var crawler *http_crawler.Crawler
 	if basicAuthUsername != "" && basicAuthPassword != "" {
@@ -78,13 +98,13 @@ func main() {
 	} else {
 		crawler = http_crawler.NewCrawler(rootURL, versionNumber, nil)
 	}
-	log.Println("Generated crawler:", crawler)
+	log.Infoln("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("Generated delivery (consumer) channel:", deliveries)
+	log.Infoln("Generated delivery (consumer) channel:", deliveries)
 
 	dontQuit := make(chan struct{})
 
