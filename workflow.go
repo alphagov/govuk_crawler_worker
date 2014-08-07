@@ -143,6 +143,11 @@ func CrawlURL(
 				if err = item.Ack(false); err != nil {
 					log.Println("Ack failed (CrawlURL): ", item.URL())
 				}
+
+				err = ttlHashSet.Set(item.URL(), AlreadyCrawled)
+				if err != nil {
+					log.Println("Couldn't mark item as already crawled:", item.URL(), err)
+				}
 			}
 
 			util.StatsDTiming("crawl_url", start, time.Now())
