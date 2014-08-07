@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
+	"github.com/golang/glog"
 	"github.com/streadway/amqp"
 )
 
@@ -39,21 +39,21 @@ func ReadFromQueue(
 
 			if message.IsBlacklisted() {
 				item.Ack(false)
-				log.Println("URL is blacklisted (acknowledging):", message.URL())
+				glog.Infoln("URL is blacklisted (acknowledging):", message.URL())
 				continue
 			}
 
 			crawlCount, err := ttlHashSet.Get(message.URL())
 			if err != nil {
 				item.Reject(true)
-				log.Println("Couldn't check existence of (rejecting):", message.URL(), err)
+				glog.Errorln("Couldn't check existence of (rejecting):", message.URL(), err)
 				continue
 			}
 
 			if crawlCount == AlreadyCrawled {
-				log.Println("URL read from queue already crawled:", message.URL())
+				glog.Infoln("URL read from queue already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
-					log.Println("Ack failed (ReadFromQueue): ", message.URL())
+					glog.Errorln("Ack failed (ReadFromQueue): ", message.URL())
 				}
 				continue
 			}
@@ -94,21 +94,21 @@ func CrawlURL(
 			u, err := url.Parse(item.URL())
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
+				glog.Warningln("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
 				continue
 			}
-			log.Println("Crawling URL:", u)
+			glog.Infoln("Crawling URL:", u)
 
 			crawlCount, err := ttlHashSet.Get(u.String())
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't confirm existence of URL (rejecting):", u.String(), err)
+				glog.Errorln("Couldn't confirm existence of URL (rejecting):", u.String(), err)
 				continue
 			}
 
 			if crawlCount == maxCrawlRetries {
 				item.Reject(false)
-				log.Printf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
+				glog.Warningln("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
 				continue
 			}
 
@@ -121,15 +121,15 @@ func CrawlURL(
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
-						log.Println("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
+						glog.Warningln("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
 						time.Sleep(sleepTime)
 					}
 
 					item.Reject(true)
-					log.Println("Couldn't crawl (requeueing):", u.String(), err)
+					glog.Errorln("Couldn't crawl (requeueing):", u.String(), err)
 				} else {
 					item.Reject(false)
-					log.Println("Couldn't crawl (rejecting):", u.String(), err)
+					glog.Errorln("Couldn't crawl (rejecting):", u.String(), err)
 				}
 
 				continue
@@ -141,7 +141,7 @@ func CrawlURL(
 				extract <- item
 			} else {
 				if err = item.Ack(false); err != nil {
-					log.Println("Ack failed (CrawlURL): ", item.URL())
+					glog.Errorln("Ack failed (CrawlURL): ", item.URL())
 				}
 
 				err = ttlHashSet.Set(item.URL(), AlreadyCrawled)
@@ -174,7 +174,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", err)
+				glog.Errorln("Couldn't write to disk (rejecting):", err)
 				continue
 			}
 
@@ -184,7 +184,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				glog.Errorln("Couldn't write to disk (rejecting):", filePath, err)
 				continue
 			}
 
@@ -192,11 +192,11 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Println("Couldn't write to disk (rejecting):", filePath, err)
+				glog.Errorln("Couldn't write to disk (rejecting):", filePath, err)
 				continue
 			}
 
-			log.Println("Wrote URL body to disk for:", item.URL())
+			glog.Infoln("Wrote URL body to disk for:", item.URL())
 			extract <- item
 
 			util.StatsDTiming("write_to_disk", start, time.Now())
@@ -222,12 +222,12 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 			urls, err := item.ExtractURLs()
 			if err != nil {
 				item.Reject(false)
-				log.Println("ExtractURLs (rejecting):", string(item.Body), err)
+				glog.Errorln("ExtractURLs (rejecting):", string(item.Body), err)
 
 				continue
 			}
 
-			log.Println("Extracted URLs:", len(urls))
+			glog.Infoln("Extracted URLs:", len(urls))
 
 			for _, u := range urls {
 				publish <- u.String()
@@ -250,16 +250,16 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 		crawlCount, err := ttlHashSet.Get(url)
 
 		if err != nil {
-			log.Println("Couldn't check existence of URL:", url, err)
+			glog.Errorln("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
 		if crawlCount == AlreadyCrawled {
-			log.Println("URL extracted from page already crawled:", url)
+			glog.Infoln("URL extracted from page already crawled:", url)
 		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
-				log.Fatalln("Delivery failed:", url, err)
+				glog.Fatalln("Delivery failed:", url, err)
 			}
 		}
 
@@ -276,14 +276,14 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		err := ttlHashSet.Set(url, AlreadyCrawled)
 		if err != nil {
 			item.Reject(false)
-			log.Println("Acknowledge failed (rejecting):", url, err)
+			glog.Errorln("Acknowledge failed (rejecting):", url, err)
 			continue
 		}
 
 		if err = item.Ack(false); err != nil {
-			log.Println("Ack failed (AcknowledgeItem): ", item.URL())
+			glog.Errorln("Ack failed (AcknowledgeItem): ", item.URL())
 		}
-		log.Println("Acknowledged:", url)
+		glog.Infoln("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
