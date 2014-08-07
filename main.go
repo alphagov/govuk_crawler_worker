@@ -43,12 +43,12 @@ func main() {
 		os.Exit(0)
 	}
 	if mirrorRoot == "" {
-		log.Fatal("MIRROR_ROOT environment variable not set")
+		log.Fatalln("MIRROR_ROOT environment variable not set")
 	}
 
 	rootURL, err := url.Parse(rootURLString)
 	if err != nil {
-		log.Fatal("Couldn't parse ROOT_URL:", rootURLString)
+		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
 	if os.Getenv("GOMAXPROCS") == "" {
@@ -59,14 +59,14 @@ func main() {
 
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	defer ttlHashSet.Close()
 	log.Println("Connected to Redis service:", ttlHashSet)
 
 	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	defer queueManager.Close()
 	log.Println("Connected to AMQP service:", queueManager)
@@ -82,7 +82,7 @@ func main() {
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	log.Println("Generated delivery (consumer) channel:", deliveries)
 
@@ -113,7 +113,7 @@ func main() {
 
 	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 	http.HandleFunc("/healthcheck", healthCheck.HTTPHandler())
-	log.Fatal(http.ListenAndServe(":"+httpPort, nil))
+	log.Fatalln(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit
 }
