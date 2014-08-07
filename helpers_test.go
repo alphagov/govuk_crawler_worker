@@ -1,17 +1,17 @@
 package main_test
 
 import (
-	"log"
 	"os"
 
 	"github.com/fzzy/radix/redis"
+	"github.com/golang/glog"
 )
 
 func DeleteMirrorFilesFromDisk(mirrorRoot string) {
 	if mirrorRoot != "" {
 		err := os.RemoveAll(mirrorRoot)
 		if err != nil {
-			log.Println(err)
+			glog.Errorln(err)
 		}
 	}
 }

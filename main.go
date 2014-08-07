@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
+	"github.com/golang/glog"
 )
 
 var (
@@ -43,33 +43,33 @@ func main() {
 		os.Exit(0)
 	}
 	if mirrorRoot == "" {
-		log.Fatalln("MIRROR_ROOT environment variable not set")
+		glog.Fatalln("MIRROR_ROOT environment variable not set")
 	}
 
 	rootURL, err := url.Parse(rootURLString)
 	if err != nil {
-		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
+		glog.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
 	if os.Getenv("GOMAXPROCS") == "" {
 		// Use all available cores if not otherwise specified
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
-	log.Println(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
+	glog.Infoln(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
 
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
 	if err != nil {
-		log.Fatalln(err)
+		glog.Fatalln(err)
 	}
 	defer ttlHashSet.Close()
-	log.Println("Connected to Redis service:", ttlHashSet)
+	glog.Infoln("Connected to Redis service:", ttlHashSet)
 
 	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
 	if err != nil {
-		log.Fatalln(err)
+		glog.Fatalln(err)
 	}
 	defer queueManager.Close()
-	log.Println("Connected to AMQP service:", queueManager)
+	glog.Infoln("Connected to AMQP service:", queueManager)
 
 	var crawler *http_crawler.Crawler
 	if basicAuthUsername != "" && basicAuthPassword != "" {
@@ -78,13 +78,13 @@ func main() {
 	} else {
 		crawler = http_crawler.NewCrawler(rootURL, versionNumber, nil)
 	}
-	log.Println("Generated crawler:", crawler)
+	glog.Infoln("Generated crawler:", crawler)
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {
-		log.Fatalln(err)
+		glog.Fatalln(err)
 	}
-	log.Println("Generated delivery (consumer) channel:", deliveries)
+	glog.Infoln("Generated delivery (consumer) channel:", deliveries)
 
 	dontQuit := make(chan struct{})
 
@@ -113,7 +113,7 @@ func main() {
 
 	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 	http.HandleFunc("/healthcheck", healthCheck.HTTPHandler())
-	log.Fatalln(http.ListenAndServe(":"+httpPort, nil))
+	glog.Fatalln(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit
 }
