@@ -135,8 +135,7 @@ func CrawlURL(
 						log.Errorln("Couldn't mark item as already crawled:", u.String(), setErr)
 					}
 
-					item.Reject(false)
-					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
+					fallthrough
 				default:
 					item.Reject(false)
 					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
