@@ -97,7 +97,6 @@ func CrawlURL(
 				log.Warningln("Couldn't crawl, invalid URL (rejecting):", item.URL(), err)
 				continue
 			}
-			log.Infoln("Crawling URL:", u)
 
 			crawlCount, err := ttlHashSet.Get(u.String())
 			if err != nil {
@@ -112,6 +111,7 @@ func CrawlURL(
 				continue
 			}
 
+			log.Infoln("Starting crawl of URL:", u)
 			body, err := crawler.Crawl(u)
 			if err != nil {
 				switch err {
