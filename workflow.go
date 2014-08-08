@@ -156,7 +156,7 @@ func CrawlURL(
 
 				err = ttlHashSet.Set(item.URL(), AlreadyCrawled)
 				if err != nil {
-					log.Println("Couldn't mark item as already crawled:", item.URL(), err)
+					log.Errorln("Couldn't mark item as already crawled:", item.URL(), err)
 				}
 			}
 
