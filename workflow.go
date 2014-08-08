@@ -114,10 +114,12 @@ func CrawlURL(
 
 			body, err := crawler.Crawl(u)
 			if err != nil {
-				if err == http_crawler.RetryRequest5XXError || err == http_crawler.RetryRequest429Error {
-					if err == http_crawler.RetryRequest5XXError {
+				switch err {
+				case http_crawler.RetryRequest5XXError, http_crawler.RetryRequest429Error:
+					switch err {
+					case http_crawler.RetryRequest5XXError:
 						ttlHashSet.Incr(u.String())
-					} else if err == http_crawler.RetryRequest429Error {
+					case http_crawler.RetryRequest429Error:
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
@@ -127,7 +129,15 @@ func CrawlURL(
 
 					item.Reject(true)
 					log.Warningln("Couldn't crawl (requeueing):", u.String(), err)
-				} else {
+				case http_crawler.RedirectError:
+					err = ttlHashSet.Set(u.String(), AlreadyCrawled)
+					if err != nil {
+						log.Errorln("Couldn't mark item as already crawled:", u.String(), err)
+					}
+
+					item.Reject(false)
+					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
+				default:
 					item.Reject(false)
 					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
 				}

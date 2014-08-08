@@ -176,6 +176,39 @@ var _ = Describe("Workflow", func() {
 				close(crawlChan)
 			})
 
+			It("adds a redirect URL to the TTLHashSet so we don't immediately retry it", func() {
+				body := `<a href="gov.uk">bar</a>`
+				server := testServer(http.StatusMovedPermanently, body)
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				Expect(len(crawlChan)).To(Equal(0))
+
+				maxRetries := 4
+
+				err = queueManager.Publish("#", "text/plain", server.URL)
+				Expect(err).To(BeNil())
+				Eventually(crawlChan).Should(HaveLen(1))
+
+				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				Eventually(crawlChan).Should(HaveLen(0))
+
+				Eventually(func() (int, error) {
+					return ttlHashSet.Get(server.URL)
+				}).Should(Equal(AlreadyCrawled))
+
+				Eventually(func() (int, error) {
+					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
+					return queueInfo.Messages, err
+				}).Should(Equal(0))
+				Expect(len(crawled)).To(Equal(0))
+
+				server.Close()
+				close(crawlChan)
+			})
+
 			It("adds a non-HTML URL to the TTLHashSet so we don't immediately retry it", func() {
 				body := `I am not HTML. No HTML, see?`
 				server := testServer(http.StatusOK, body)
