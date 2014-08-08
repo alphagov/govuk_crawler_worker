@@ -77,7 +77,7 @@ var _ = Describe("QueueConnection", func() {
 			_, err = connection.Channel.QueueInspect(queueName)
 			Expect(err.Error()).To(MatchRegexp(expectedError))
 
-			// We'd normally log.Fatal() here to exit.
+			// We'd normally log.Fatalln() here to exit.
 			err = <-fatalErrs
 			Expect(err.Error()).To(MatchRegexp(expectedError))
 

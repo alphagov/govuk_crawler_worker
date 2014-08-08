@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -110,7 +110,7 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 func (c *CrawlerMessageItem) IsBlacklisted() bool {
 	urlParts, err := url.Parse(c.URL())
 	if err != nil {
-		log.Println("Malformed URL", c.URL())
+		log.Warningln("Malformed URL", c.URL())
 		return false
 	}
 	return isBlacklistedPath(urlParts.Path, c.blacklistPaths)
