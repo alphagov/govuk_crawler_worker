@@ -276,5 +276,13 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 			Expect(len(urls)).To(Equal(1))
 		})
+
+		It("should only return unique URLs", func() {
+			item.HTMLBody = []byte(`<a href="http://www.gov.uk/foo">a</a><a href="http://www.gov.uk/foo">b</a>`)
+			urls, err := item.ExtractURLs()
+
+			Expect(err).To(BeNil())
+			Expect(urls).To(HaveLen(1))
+		})
 	})
 })
