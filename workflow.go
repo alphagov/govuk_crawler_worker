@@ -130,13 +130,12 @@ func CrawlURL(
 					item.Reject(true)
 					log.Warningln("Couldn't crawl (requeueing):", u.String(), err)
 				case http_crawler.RedirectError:
-					err = ttlHashSet.Set(u.String(), AlreadyCrawled)
-					if err != nil {
-						log.Errorln("Couldn't mark item as already crawled:", u.String(), err)
+					setErr := ttlHashSet.Set(u.String(), AlreadyCrawled)
+					if setErr != nil {
+						log.Errorln("Couldn't mark item as already crawled:", u.String(), setErr)
 					}
 
-					item.Reject(false)
-					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
+					fallthrough
 				default:
 					item.Reject(false)
 					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
