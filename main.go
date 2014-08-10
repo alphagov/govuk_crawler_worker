@@ -132,10 +132,16 @@ func main() {
 	go PublishURLs(ttlHashSet, queueManager, publishChan)
 	go AcknowledgeItem(acknowledgeChan, ttlHashSet)
 
-	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-	expvar.Publish("status", expvar.Func(func() interface{} {
-		return healthCheck.Status()
+	expvar.Publish("amqp", expvar.Func(func() interface{} {
+		_, consumerErr := queueManager.Consumer.Channel.QueueInspect(queueManager.QueueName)
+		_, producerErr := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
+		return consumerErr == nil && producerErr == nil
 	}))
+	expvar.Publish("redis", expvar.Func(func() interface{} {
+		pong, _ := ttlHashSet.Ping()
+		return pong == "PONG"
+	}))
+
 	log.Fatalln(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit
