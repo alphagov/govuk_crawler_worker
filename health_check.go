@@ -1,10 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 )
@@ -48,18 +44,5 @@ func (h *HealthCheck) Status() *Status {
 	return &Status{
 		AMQP:  (consumerStatus && publisherStatus),
 		Redis: redisStatus,
-	}
-}
-
-func (h *HealthCheck) HTTPHandler() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		status := h.Status()
-		encoder := json.NewEncoder(w)
-
-		err := encoder.Encode(&status)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Cannot encode response data: %v", err),
-				http.StatusInternalServerError)
-		}
 	}
 }

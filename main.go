@@ -1,6 +1,7 @@
 package main
 
 import (
+	"expvar"
 	"flag"
 	"fmt"
 	"net/http"
@@ -132,7 +133,9 @@ func main() {
 	go AcknowledgeItem(acknowledgeChan, ttlHashSet)
 
 	healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-	http.HandleFunc("/healthcheck", healthCheck.HTTPHandler())
+	expvar.Publish("status", expvar.Func(func() interface{} {
+		return healthCheck.Status()
+	}))
 	log.Fatalln(http.ListenAndServe(":"+httpPort, nil))
 
 	<-dontQuit

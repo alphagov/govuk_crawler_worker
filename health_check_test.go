@@ -1,10 +1,6 @@
 package main_test
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
-
 	. "github.com/alphagov/govuk_crawler_worker"
 
 	. "github.com/onsi/ginkgo"
@@ -93,17 +89,6 @@ var _ = Describe("HealthCheck", func() {
 				AMQP:  true,
 				Redis: true,
 			}))
-		})
-
-		It("provides an HTTP handler for marshalling the response to an HTTP server", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			handler := healthCheck.HTTPHandler()
-
-			w := httptest.NewRecorder()
-			handler(w, nil)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(strings.TrimSpace(w.Body.String())).To(Equal(`{"amqp":true,"redis":true}`))
 		})
 	})
 
