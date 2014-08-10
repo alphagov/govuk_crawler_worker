@@ -27,17 +27,17 @@ func (h *HealthCheck) Status() *Status {
 	var consumerStatus, publisherStatus, redisStatus bool
 
 	pong, err := h.ttlHashSet.Ping()
-	if err == nil && pong == "PONG" {
+	if pong == "PONG" {
 		redisStatus = true
 	}
 
-	consumerInspect, err := h.queueManager.Consumer.Channel.QueueInspect(h.queueManager.QueueName)
-	if err == nil && consumerInspect.Name == h.queueManager.QueueName {
+	_, err = h.queueManager.Consumer.Channel.QueueInspect(h.queueManager.QueueName)
+	if err == nil {
 		consumerStatus = true
 	}
 
-	publisherInspect, err := h.queueManager.Producer.Channel.QueueInspect(h.queueManager.QueueName)
-	if err == nil && publisherInspect.Name == h.queueManager.QueueName {
+	_, err = h.queueManager.Producer.Channel.QueueInspect(h.queueManager.QueueName)
+	if err == nil {
 		publisherStatus = true
 	}
 
