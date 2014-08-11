@@ -15,7 +15,7 @@ import (
 
 type CrawlerMessageItem struct {
 	amqp.Delivery
-	HTMLBody []byte
+	ResponseBody []byte
 
 	rootURL        *url.URL
 	blacklistPaths []string
@@ -30,7 +30,7 @@ func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL *url.URL, blacklistPa
 }
 
 func (c *CrawlerMessageItem) IsHTML() bool {
-	return http.DetectContentType(c.HTMLBody) == "text/html; charset=utf-8"
+	return http.DetectContentType(c.ResponseBody) == "text/html; charset=utf-8"
 }
 
 func (c *CrawlerMessageItem) URL() string {
@@ -71,7 +71,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 	extractedURLs := []*url.URL{}
 
-	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.HTMLBody))
+	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.ResponseBody))
 	if err != nil {
 		return extractedURLs, err
 	}

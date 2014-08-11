@@ -146,7 +146,7 @@ func CrawlURL(
 				continue
 			}
 
-			item.HTMLBody = body
+			item.ResponseBody = body
 
 			if item.IsHTML() {
 				extract <- item
@@ -199,7 +199,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 				continue
 			}
 
-			err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
+			err = ioutil.WriteFile(filePath, item.ResponseBody, 0644)
 
 			if err != nil {
 				item.Reject(false)
