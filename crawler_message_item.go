@@ -104,6 +104,8 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 		extractedURLs = append(extractedURLs, urls...)
 	}
 
+	extractedURLs = filterDuplicateURLs(extractedURLs)
+
 	return extractedURLs, err
 }
 
@@ -154,6 +156,20 @@ func filterBlacklistedURLs(blacklistedPaths []string, urls []*url.URL) []*url.UR
 	return filterURLs(urls, func(url *url.URL) bool {
 		return !isBlacklistedPath(url.Path, blacklistedPaths)
 	})
+}
+
+func filterDuplicateURLs(urls []*url.URL) []*url.URL {
+	urlMap := make(map[string]*url.URL)
+	for _, url := range urls {
+		urlMap[url.String()] = url
+	}
+
+	uniqueUrls := make([]*url.URL, 0, len(urlMap))
+	for _, url := range urlMap {
+		uniqueUrls = append(uniqueUrls, url)
+	}
+
+	return uniqueUrls
 }
 
 // Filter an array of *url.URL objects based on a filter function that
