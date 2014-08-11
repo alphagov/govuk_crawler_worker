@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"net/http"
 	"net/url"
 	"path"
 	"regexp"
@@ -30,10 +29,6 @@ func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL *url.URL, blacklistPa
 	}
 }
 
-func (c *CrawlerMessageItem) IsHTML() bool {
-	return http.DetectContentType(c.Response.Body) == "text/html; charset=utf-8"
-}
-
 func (c *CrawlerMessageItem) URL() string {
 	return string(c.Body)
 }
@@ -48,7 +43,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 
 	filePath = urlParts.Path
 
-	if c.IsHTML() {
+	if c.Response.IsHTML() {
 		r, err := regexp.Compile(`.(html|htm)$`)
 
 		if err != nil {

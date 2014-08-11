@@ -67,10 +67,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 	})
 
-	It("is able to state whether the content type is HTML", func() {
-		Expect(item.IsHTML()).To(BeTrue())
-	})
-
 	It("detects when a URL is blacklisted", func() {
 		delivery = amqp.Delivery{Body: []byte("https://www.example.com/blacklisted")}
 		item := NewCrawlerMessageItem(delivery, rootURL, []string{"/blacklisted"})

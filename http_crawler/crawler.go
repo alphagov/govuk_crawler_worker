@@ -36,11 +36,6 @@ type Crawler struct {
 	version   string
 }
 
-type CrawlerResponse struct {
-	Body   []byte
-	Header http.Header
-}
-
 func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
 	return &Crawler{
 		RootURL: rootURL,
