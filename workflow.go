@@ -112,7 +112,7 @@ func CrawlURL(
 			}
 
 			log.Infoln("Starting crawl of URL:", u)
-			body, err := crawler.Crawl(u)
+			response, err := crawler.Crawl(u)
 			if err != nil {
 				switch err {
 				case http_crawler.RetryRequest5XXError, http_crawler.RetryRequest429Error:
@@ -146,7 +146,7 @@ func CrawlURL(
 				continue
 			}
 
-			item.ResponseBody = body
+			item.Response = response
 
 			if item.IsHTML() {
 				extract <- item
@@ -199,7 +199,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 				continue
 			}
 
-			err = ioutil.WriteFile(filePath, item.ResponseBody, 0644)
+			err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
 
 			if err != nil {
 				item.Reject(false)

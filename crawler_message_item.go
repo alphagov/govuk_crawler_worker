@@ -10,12 +10,13 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/Sirupsen/logrus"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/streadway/amqp"
 )
 
 type CrawlerMessageItem struct {
 	amqp.Delivery
-	ResponseBody []byte
+	Response *http_crawler.CrawlerResponse
 
 	rootURL        *url.URL
 	blacklistPaths []string
@@ -30,7 +31,7 @@ func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL *url.URL, blacklistPa
 }
 
 func (c *CrawlerMessageItem) IsHTML() bool {
-	return http.DetectContentType(c.ResponseBody) == "text/html; charset=utf-8"
+	return http.DetectContentType(c.Response.Body) == "text/html; charset=utf-8"
 }
 
 func (c *CrawlerMessageItem) URL() string {
@@ -71,7 +72,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 	extractedURLs := []*url.URL{}
 
-	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.ResponseBody))
+	document, err := goquery.NewDocumentFromReader(bytes.NewBuffer(c.Response.Body))
 	if err != nil {
 		return extractedURLs, err
 	}
