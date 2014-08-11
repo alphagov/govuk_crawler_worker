@@ -6,7 +6,17 @@ import (
 )
 
 const (
+	ATOM = "application/atom+xml"
+	CSV  = "text/csv"
+	DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	ICS  = "text/calendar"
 	JSON = "application/json"
+	ODP  = "application/vnd.oasis.opendocument.presentation"
+	ODS  = "application/vnd.oasis.opendocument.spreadsheet"
+	ODT  = "application/vnd.oasis.opendocument.text"
+	PDF  = "application/pdf"
+	XLS  = "application/vnd.ms-excel"
+	XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
 type CrawlerResponse struct {
