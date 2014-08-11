@@ -10,6 +10,6 @@ import (
 var _ = Describe("CrawlerResponse", func() {
 	It("exposes a way to check if the response body is HTML", func() {
 		response := &CrawlerResponse{Body: []byte(`<html><body><p>hi</p></body></html>`)}
-		Expect(response.IsHTML()).To(BeTrue())
+		Expect(response.IsBodyHTML()).To(BeTrue())
 	})
 })

@@ -9,6 +9,6 @@ type CrawlerResponse struct {
 	Header http.Header
 }
 
-func (r *CrawlerResponse) IsHTML() bool {
+func (r *CrawlerResponse) IsBodyHTML() bool {
 	return http.DetectContentType(r.Body) == "text/html; charset=utf-8"
 }
