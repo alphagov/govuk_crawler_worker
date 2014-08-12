@@ -43,7 +43,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 
 	filePath = urlParts.Path
 
-	contentType, err := c.Response.ContentType()
+	contentType, err := c.Response.ParseContentType()
 	if err != nil {
 		return "", err
 	}

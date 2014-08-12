@@ -262,10 +262,9 @@ var _ = Describe("Workflow", func() {
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 				item.Response = &CrawlerResponse{
-					Header: make(http.Header),
-					Body:   []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					ContentType: HTML,
 				}
-				item.Response.Header.Set("Content-Type", HTML)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
 				extract := WriteItemToDisk(mirrorRoot, outbound)
@@ -298,10 +297,9 @@ var _ = Describe("Workflow", func() {
 				rootURL, _ := url.Parse("https://www.gov.uk")
 				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
 				item.Response = &CrawlerResponse{
-					Header: make(http.Header),
-					Body:   body,
+					Body:        body,
+					ContentType: JSON,
 				}
-				item.Response.Header.Set("Content-Type", JSON)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
 				extract := WriteItemToDisk(mirrorRoot, outbound)

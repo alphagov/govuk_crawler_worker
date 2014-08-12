@@ -209,7 +209,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			log.Infoln("Wrote URL body to disk for:", item.URL())
 
-			contentType, err := item.Response.ContentType()
+			contentType, err := item.Response.ParseContentType()
 			if err != nil {
 				log.Errorln("Couldn't determine Content-Type for item (requeueing):", item, err)
 				item.Reject(true)

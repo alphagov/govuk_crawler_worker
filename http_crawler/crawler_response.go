@@ -2,7 +2,6 @@ package http_crawler
 
 import (
 	"mime"
-	"net/http"
 )
 
 const (
@@ -21,12 +20,12 @@ const (
 )
 
 type CrawlerResponse struct {
-	Body   []byte
-	Header http.Header
+	Body        []byte
+	ContentType string
 }
 
 func (c *CrawlerResponse) AcceptedContentType() bool {
-	mimeType, err := c.ContentType()
+	mimeType, err := c.ParseContentType()
 	if err != nil {
 		return false
 	}
@@ -39,8 +38,8 @@ func (c *CrawlerResponse) AcceptedContentType() bool {
 	return false
 }
 
-func (c *CrawlerResponse) ContentType() (string, error) {
-	mimeType, _, err := mime.ParseMediaType(c.Header.Get("Content-Type"))
+func (c *CrawlerResponse) ParseContentType() (string, error) {
+	mimeType, _, err := mime.ParseMediaType(c.ContentType)
 	if err != nil {
 		return "", err
 	}

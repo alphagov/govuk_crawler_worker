@@ -90,8 +90,8 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	}
 
 	response := &CrawlerResponse{
-		Body:   body,
-		Header: resp.Header,
+		Body:        body,
+		ContentType: resp.Header.Get("Content-Type"),
 	}
 
 	return response, nil

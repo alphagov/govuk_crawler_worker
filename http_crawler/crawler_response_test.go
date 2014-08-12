@@ -5,20 +5,18 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"net/http"
 )
 
 var _ = Describe("CrawlerResponse", func() {
+	var response *CrawlerResponse
+
+	BeforeEach(func() {
+		response = &CrawlerResponse{}
+	})
+
 	Describe("AcceptedContentType", func() {
-		var response *CrawlerResponse
-
-		BeforeEach(func() {
-			response = &CrawlerResponse{Header: make(http.Header)}
-		})
-
 		It("doesn't support audio content types", func() {
-			response.Header.Set("Content-Type", "audio/mpeg")
+			response.ContentType = "audio/mpeg"
 			Expect(response.AcceptedContentType()).To(BeFalse())
 		})
 
@@ -28,7 +26,7 @@ var _ = Describe("CrawlerResponse", func() {
 				"text/html; charset=utf-8",
 				ATOM, CSV, DOCX, HTML, ICS, JSON, ODP, ODS, ODT, PDF, XLS, XLSX,
 			} {
-				response.Header.Set("Content-Type", contentType)
+				response.ContentType = contentType
 				Expect(response.AcceptedContentType()).To(BeTrue())
 			}
 		})
@@ -37,17 +35,16 @@ var _ = Describe("CrawlerResponse", func() {
 	Describe("ContentType", func() {
 		It("returns the error if we can't parse the content type", func() {
 			response := &CrawlerResponse{}
-			mime, err := response.ContentType()
+			mime, err := response.ParseContentType()
 
 			Expect(mime).To(BeEmpty())
 			Expect(err).ToNot(BeNil())
 		})
 
 		It("returns the simplified mime type of the HTTP Content-Type value", func() {
-			response := &CrawlerResponse{Header: make(http.Header)}
-			response.Header.Set("Content-Type", "application/json; charset=utf-8")
+			response := &CrawlerResponse{ContentType: "application/json; charset=utf-8"}
 
-			mime, err := response.ContentType()
+			mime, err := response.ParseContentType()
 
 			Expect(mime).To(Equal(JSON))
 			Expect(err).To(BeNil())
