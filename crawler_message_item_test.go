@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"io/ioutil"
+	"net/http"
 	"net/url"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -16,7 +17,7 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var expectedFilePath, mirrorRoot, testUrl, urlPath string
+	var mirrorRoot, testUrl, urlPath string
 	var delivery amqp.Delivery
 	var err error
 	var html []byte
@@ -33,7 +34,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 		rootURL, _ = url.Parse("https://www.gov.uk")
 		testUrl = rootURL.String() + urlPath
 		urlPath = "/government/organisations"
-		expectedFilePath = "government/organisations.html"
 
 		delivery = amqp.Delivery{Body: []byte(testUrl)}
 		item = NewCrawlerMessageItem(delivery, rootURL, []string{})
@@ -43,7 +43,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 <body><h1>TEST</h1></body>
 </html>
 `)
-		item.Response = &CrawlerResponse{Body: html}
+		item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
 	})
 
 	AfterEach(func() {
@@ -80,98 +80,111 @@ var _ = Describe("CrawlerMessageItem", func() {
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
 			testUrl = "https://user:pass@example.com:8080/test/url"
-			expectedFilePath = "test/url.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("test/url.html"))
 		})
 
 		It("strips preceeding path traversals and resolves the remaining path", func() {
 			testUrl = rootURL.String() + "/../../one/./two/../three"
-			expectedFilePath = "one/three.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("one/three.html"))
 		})
 
 		It("preserves case sensitivity", func() {
 			testUrl = rootURL.String() + "/test/UPPER/MiXeD"
-			expectedFilePath = "test/UPPER/MiXeD.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("test/UPPER/MiXeD.html"))
 		})
 
 		It("preserves non-alphanumeric characters", func() {
 			testUrl = rootURL.String() + "/test/!T@e£s$t/U^R*L(){}"
-			expectedFilePath = "test/!T@e£s$t/U^R*L(){}.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("test/!T@e£s$t/U^R*L(){}.html"))
 		})
 
 		It("preserves multiple dashes", func() {
 			testUrl = rootURL.String() + "/test/one-two--three---"
-			expectedFilePath = "test/one-two--three---.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("test/one-two--three---.html"))
 		})
 
 		It("preserves non-latin chars and not URL encode them", func() {
 			testUrl = rootURL.String() + `/test/如何在香港申請英國簽證`
-			expectedFilePath = `test/如何在香港申請英國簽證.html`
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal(`test/如何在香港申請英國簽證.html`))
 		})
 
 		It("adds an index.html suffix when URL references a directory", func() {
 			testUrl = rootURL.String() + "/this/url/has/a/trailing/slash/"
-			expectedFilePath = "this/url/has/a/trailing/slash/index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("this/url/has/a/trailing/slash/index.html"))
 		})
 
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
 			testUrl = rootURL.String() + "/"
-			expectedFilePath = "index.html"
 			delivery = amqp.Delivery{Body: []byte(testUrl)}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("index.html"))
 		})
 
 		It("omits URL query parameters", func() {
 			delivery := amqp.Delivery{Body: []byte(testUrl + "?foo=bar")}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item.Response = &CrawlerResponse{Body: html}
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
 		})
 
 		It("omits URL fragments", func() {
 			delivery := amqp.Delivery{Body: []byte(testUrl + "#foo")}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html}
 
-			Expect(item.RelativeFilePath()).To(Equal(expectedFilePath))
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: html}
+			item.Response.Header.Set("Content-Type", HTML)
+
+			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
 		})
 	})
 
