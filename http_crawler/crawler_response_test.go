@@ -10,9 +10,28 @@ import (
 )
 
 var _ = Describe("CrawlerResponse", func() {
-	It("exposes a way to check if the response body is HTML", func() {
-		response := &CrawlerResponse{Body: []byte(`<html><body><p>hi</p></body></html>`)}
-		Expect(response.IsBodyHTML()).To(BeTrue())
+	Describe("AcceptedContentType", func() {
+		var response *CrawlerResponse
+
+		BeforeEach(func() {
+			response = &CrawlerResponse{Header: make(http.Header)}
+		})
+
+		It("doesn't support audio content types", func() {
+			response.Header.Set("Content-Type", "audio/mpeg")
+			Expect(response.AcceptedContentType()).To(BeFalse())
+		})
+
+		It("accepts a known set of content types", func() {
+			for _, contentType := range []string{
+				// Provide one with a charset to be sure.
+				"text/html; charset=utf-8",
+				ATOM, CSV, DOCX, HTML, ICS, JSON, ODP, ODS, ODT, PDF, XLS, XLSX,
+			} {
+				response.Header.Set("Content-Type", contentType)
+				Expect(response.AcceptedContentType()).To(BeTrue())
+			}
+		})
 	})
 
 	Describe("ContentType", func() {
@@ -33,5 +52,10 @@ var _ = Describe("CrawlerResponse", func() {
 			Expect(mime).To(Equal(JSON))
 			Expect(err).To(BeNil())
 		})
+	})
+
+	It("exposes a way to check if the response body is HTML", func() {
+		response := &CrawlerResponse{Body: []byte(`<html><body><p>hi</p></body></html>`)}
+		Expect(response.IsBodyHTML()).To(BeTrue())
 	})
 })
