@@ -43,7 +43,12 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 
 	filePath = urlParts.Path
 
-	if c.Response.IsBodyHTML() {
+	contentType, err := c.Response.ContentType()
+	if err != nil {
+		return "", err
+	}
+
+	if contentType == http_crawler.HTML {
 		r, err := regexp.Compile(`.(html|htm)$`)
 
 		if err != nil {

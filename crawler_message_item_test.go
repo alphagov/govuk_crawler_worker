@@ -186,6 +186,28 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
 		})
+
+		It("supports ATOM URLs", func() {
+			testUrl = rootURL.String() + "/things.atom"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: []byte("")}
+			item.Response.Header.Set("Content-Type", ATOM)
+
+			Expect(item.RelativeFilePath()).To(Equal("things.atom"))
+		})
+
+		It("supports JSON URLs", func() {
+			testUrl = rootURL.String() + "/api.json"
+			delivery = amqp.Delivery{Body: []byte(testUrl)}
+
+			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item.Response = &CrawlerResponse{Header: make(http.Header), Body: []byte("")}
+			item.Response.Header.Set("Content-Type", JSON)
+
+			Expect(item.RelativeFilePath()).To(Equal("api.json"))
+		})
 	})
 
 	Describe("ExtractURLs", func() {

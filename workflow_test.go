@@ -262,8 +262,10 @@ var _ = Describe("Workflow", func() {
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 				item.Response = &CrawlerResponse{
-					Body: []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					Header: make(http.Header),
+					Body:   []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
 				}
+				item.Response.Header.Set("Content-Type", HTML)
 
 				outbound := make(chan *CrawlerMessageItem, 1)
 				extract := WriteItemToDisk(mirrorRoot, outbound)
@@ -281,6 +283,38 @@ var _ = Describe("Workflow", func() {
 
 				Expect(err).To(BeNil())
 				Expect(fileContent).To(Equal(item.Response.Body))
+
+				close(outbound)
+			})
+
+			It("doesn't forward the item for extraction if it's not HTML", func() {
+				body := []byte(`{"a": 2}`)
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				err = queueManager.Publish("#", "text/plain", "https://www.gov.uk/extract-some-urls.json")
+				Expect(err).To(BeNil())
+
+				rootURL, _ := url.Parse("https://www.gov.uk")
+				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
+				item.Response = &CrawlerResponse{
+					Header: make(http.Header),
+					Body:   body,
+				}
+				item.Response.Header.Set("Content-Type", JSON)
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+				Expect(len(extract)).To(Equal(0))
+
+				outbound <- item
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+				Eventually(func() []byte {
+					content, _ := ioutil.ReadFile(filePath)
+					return content
+				}).Should(Equal(body))
+				Expect(len(extract)).To(Equal(0))
 
 				close(outbound)
 			})

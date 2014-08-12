@@ -208,7 +208,20 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			}
 
 			log.Infoln("Wrote URL body to disk for:", item.URL())
-			extract <- item
+
+			contentType, err := item.Response.ContentType()
+			if err != nil {
+				log.Errorln("Couldn't determine Content-Type for item (requeueing):", item, err)
+				item.Reject(true)
+			}
+
+			// Only send HTML pages for URL extraction. All other
+			// pages should be written directly to disk and acknowledged.
+			if contentType == http_crawler.HTML {
+				extract <- item
+			} else {
+				item.Ack(false)
+			}
 
 			util.StatsDTiming("write_to_disk", start, time.Now())
 		}
