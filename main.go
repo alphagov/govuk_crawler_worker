@@ -53,7 +53,7 @@ func init() {
 		log.SetLevel(log.WarnLevel)
 	}
 
-	log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stderr)
 
 	if *versionFlag {
 		fmt.Println(versionNumber)
