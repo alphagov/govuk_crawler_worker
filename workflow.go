@@ -185,7 +185,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", err)
+				log.Errorln("Couldn't retrieve relative file path for item (rejecting):", item.URL(), err)
 				continue
 			}
 
@@ -195,7 +195,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
+				log.Errorln("Couldn't created directories for item (rejecting):", filePath, err)
 				continue
 			}
 
