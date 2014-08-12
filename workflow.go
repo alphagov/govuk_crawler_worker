@@ -148,7 +148,7 @@ func CrawlURL(
 
 			item.Response = response
 
-			if item.Response.IsBodyHTML() {
+			if item.Response.AcceptedContentType() {
 				extract <- item
 			} else {
 				if err = item.Ack(false); err != nil {

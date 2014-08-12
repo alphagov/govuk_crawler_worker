@@ -53,9 +53,4 @@ var _ = Describe("CrawlerResponse", func() {
 			Expect(err).To(BeNil())
 		})
 	})
-
-	It("exposes a way to check if the response body is HTML", func() {
-		response := &CrawlerResponse{Body: []byte(`<html><body><p>hi</p></body></html>`)}
-		Expect(response.IsBodyHTML()).To(BeTrue())
-	})
 })

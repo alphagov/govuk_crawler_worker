@@ -47,7 +47,3 @@ func (c *CrawlerResponse) ContentType() (string, error) {
 
 	return mimeType, nil
 }
-
-func (c *CrawlerResponse) IsBodyHTML() bool {
-	return http.DetectContentType(c.Body) == "text/html; charset=utf-8"
-}
