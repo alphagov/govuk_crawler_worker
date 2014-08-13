@@ -81,7 +81,7 @@ func main() {
 
 	ttlExpireTime, err := time.ParseDuration(ttlExpireString)
 	if err != nil {
-		ttlExpireTime = 12 * time.Hour
+		log.Fatalln("Couldn't parse TTL_EXPIRE_TIME:", ttlExpireString)
 	}
 
 	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr, ttlExpireTime)
