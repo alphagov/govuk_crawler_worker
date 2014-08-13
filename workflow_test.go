@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -47,7 +48,7 @@ var _ = Describe("Workflow", func() {
 
 			rootURL, _ = url.Parse("https://www.gov.uk")
 
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
 
 			queueManager, queueManagerErr = NewQueueManager(

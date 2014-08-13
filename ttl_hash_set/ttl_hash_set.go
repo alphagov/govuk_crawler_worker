@@ -11,7 +11,6 @@ import (
 )
 
 const WaitBetweenReconnect = 2 * time.Second
-const ttlExpiryTime = 48 * time.Hour
 
 type ReconnectMutex struct {
 	mutex        sync.RWMutex
@@ -33,23 +32,25 @@ func (r *ReconnectMutex) Update(state bool) {
 }
 
 type TTLHashSet struct {
-	addr    string
-	client  *redis.Client
-	mutex   sync.Mutex
-	prefix  string
-	rcMutex ReconnectMutex
+	addr          string
+	client        *redis.Client
+	mutex         sync.Mutex
+	prefix        string
+	rcMutex       ReconnectMutex
+	ttlExpiryTime time.Duration
 }
 
-func NewTTLHashSet(prefix string, address string) (*TTLHashSet, error) {
+func NewTTLHashSet(prefix string, address string, ttlExpiryTime time.Duration) (*TTLHashSet, error) {
 	client, err := redis.Dial("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
 	return &TTLHashSet{
-		addr:   address,
-		client: client,
-		prefix: prefix,
+		addr:          address,
+		client:        client,
+		prefix:        prefix,
+		ttlExpiryTime: ttlExpiryTime,
 	}, nil
 }
 
@@ -61,7 +62,7 @@ func (t *TTLHashSet) Incr(key string) error {
 	defer t.mutex.Unlock()
 
 	t.client.Append("INCR", localKey)
-	t.client.Append("EXPIRE", localKey, ttlExpiryTime.Seconds())
+	t.client.Append("EXPIRE", localKey, t.ttlExpiryTime.Seconds())
 
 	_, err := t.client.GetReply().Bool()
 	if err != nil {
@@ -83,7 +84,7 @@ func (t *TTLHashSet) Set(key string, val int) error {
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
-	_, err := t.client.Cmd("SETEX", localKey, ttlExpiryTime.Seconds(), val).Bool()
+	_, err := t.client.Cmd("SETEX", localKey, t.ttlExpiryTime.Seconds(), val).Bool()
 	t.mutex.Unlock()
 
 	if err != nil {

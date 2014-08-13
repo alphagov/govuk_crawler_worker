@@ -19,7 +19,7 @@ var _ = Describe("TTLHashSet", func() {
 	prefix := "govuk_mirror_crawler_test"
 
 	It("returns an error when asking for a TTLHashSet object that can't connect to redis", func() {
-		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000")
+		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000", time.Hour)
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
@@ -42,7 +42,7 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr)
+			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr, time.Hour)
 
 			Expect(err).To(BeNil())
 			Expect(ttlHashSet).ToNot(BeNil())
@@ -114,7 +114,7 @@ var _ = Describe("TTLHashSet", func() {
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr)
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
 		})
 
 		AfterEach(func() {
