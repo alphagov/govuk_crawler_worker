@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
@@ -30,6 +31,7 @@ var (
 	redisAddr         = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
 	rootURLString     = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	ttlExpireString   = util.GetEnvDefault("TTL_EXPIRE_TIME", "12h")
 	mirrorRoot        = os.Getenv("MIRROR_ROOT")
 )
 
@@ -77,7 +79,12 @@ func main() {
 		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
 	}
 
-	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr)
+	ttlExpireTime, err := time.ParseDuration(ttlExpireString)
+	if err != nil {
+		ttlExpireTime = 12 * time.Hour
+	}
+
+	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr, ttlExpireTime)
 	if err != nil {
 		log.Fatalln(err)
 	}
