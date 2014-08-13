@@ -38,6 +38,8 @@ var (
 const versionNumber string = "0.1.0"
 
 func init() {
+	jsonFlag := flag.Bool("json", false, "output logs as JSON")
+
 	debugFlag := flag.Bool("debug", false, "debug logging")
 	quietFlag := flag.Bool("quiet", false, "surpress all logging except errors")
 	verboseFlag := flag.Bool("verbose", false, "verbose logging")
@@ -56,6 +58,10 @@ func init() {
 	}
 
 	log.SetOutput(os.Stderr)
+
+	if *jsonFlag {
+		log.SetFormatter(new(log.JSONFormatter))
+	}
 
 	if *versionFlag {
 		fmt.Println(versionNumber)
