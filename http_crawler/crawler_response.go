@@ -5,18 +5,24 @@ import (
 )
 
 const (
-	ATOM = "application/atom+xml"
-	CSV  = "text/csv"
-	DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-	HTML = "text/html"
-	ICS  = "text/calendar"
-	JSON = "application/json"
-	ODP  = "application/vnd.oasis.opendocument.presentation"
-	ODS  = "application/vnd.oasis.opendocument.spreadsheet"
-	ODT  = "application/vnd.oasis.opendocument.text"
-	PDF  = "application/pdf"
-	XLS  = "application/vnd.ms-excel"
-	XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	ATOM       = "application/atom+xml"
+	CSS        = "text/css"
+	CSV        = "text/csv"
+	DOCX       = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	GIF        = "image/gif"
+	HTML       = "text/html"
+	ICO        = "image/x-icon"
+	ICS        = "text/calendar"
+	JAVASCRIPT = "application/x-javascript"
+	JPEG       = "image/jpeg"
+	JSON       = "application/json"
+	ODP        = "application/vnd.oasis.opendocument.presentation"
+	ODS        = "application/vnd.oasis.opendocument.spreadsheet"
+	ODT        = "application/vnd.oasis.opendocument.text"
+	PDF        = "application/pdf"
+	PNG        = "image/png"
+	XLS        = "application/vnd.ms-excel"
+	XLSX       = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
 type CrawlerResponse struct {
@@ -31,7 +37,8 @@ func (c *CrawlerResponse) AcceptedContentType() bool {
 	}
 
 	switch mimeType {
-	case ATOM, CSV, DOCX, HTML, ICS, JSON, ODP, ODS, ODT, PDF, XLS, XLSX:
+	case ATOM, CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
+		JPEG, JSON, ODP, ODS, ODT, PDF, PNG, XLS, XLSX:
 		return true
 	}
 
