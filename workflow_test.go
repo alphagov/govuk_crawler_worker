@@ -108,10 +108,10 @@ var _ = Describe("Workflow", func() {
 				go AcknowledgeItem(outbound, ttlHashSet)
 
 				Eventually(outbound).Should(HaveLen(0))
-
-				exists, err = ttlHashSet.Exists(url)
-				Expect(err).To(BeNil())
-				Expect(exists).To(Equal(true))
+				Eventually(func() bool {
+					exists, _ := ttlHashSet.Exists(url)
+					return exists
+				}).Should(BeTrue())
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)
