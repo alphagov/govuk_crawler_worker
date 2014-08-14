@@ -24,8 +24,8 @@ var _ = Describe("CrawlerResponse", func() {
 			for _, contentType := range []string{
 				// Provide one with a charset to be sure.
 				"text/html; charset=utf-8",
-				ATOM, CSS, CSV, DOCX, HTML, ICS, JAVASCRIPT,
-				JSON, ODP, ODS, ODT, PDF, XLS, XLSX,
+				ATOM, CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
+				JPEG, JSON, ODP, ODS, ODT, PDF, PNG, XLS, XLSX,
 			} {
 				response.ContentType = contentType
 				Expect(response.AcceptedContentType()).To(BeTrue())
