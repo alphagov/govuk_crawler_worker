@@ -45,14 +45,14 @@ func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *C
 	}
 }
 
-func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
+func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	if !strings.HasPrefix(crawlURL.Host, c.RootURL.Host) {
-		return []byte{}, CannotCrawlURL
+		return nil, CannotCrawlURL
 	}
 
 	req, err := http.NewRequest("GET", crawlURL.String(), nil)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	if c.basicAuth != nil {
@@ -67,29 +67,34 @@ func (c *Crawler) Crawl(crawlURL *url.URL) ([]byte, error) {
 	resp, err := http.DefaultTransport.RoundTrip(req)
 
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		switch {
 		case resp.StatusCode == 429:
-			return []byte{}, RetryRequest429Error
+			return nil, RetryRequest429Error
 		case contains(Retry5XXStatusCodes(), resp.StatusCode):
-			return []byte{}, RetryRequest5XXError
+			return nil, RetryRequest5XXError
 		case resp.StatusCode == http.StatusNotFound:
-			return []byte{}, NotFoundError
+			return nil, NotFoundError
 		case contains(redirectStatusCodes, resp.StatusCode):
-			return []byte{}, RedirectError
+			return nil, RedirectError
 		}
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
-	return body, nil
+	response := &CrawlerResponse{
+		Body:        body,
+		ContentType: resp.Header.Get("Content-Type"),
+	}
+
+	return response, nil
 }
 
 func Retry5XXStatusCodes() []int {

@@ -112,7 +112,7 @@ func CrawlURL(
 			}
 
 			log.Infoln("Starting crawl of URL:", u)
-			body, err := crawler.Crawl(u)
+			response, err := crawler.Crawl(u)
 			if err != nil {
 				switch err {
 				case http_crawler.RetryRequest5XXError, http_crawler.RetryRequest429Error:
@@ -146,9 +146,9 @@ func CrawlURL(
 				continue
 			}
 
-			item.HTMLBody = body
+			item.Response = response
 
-			if item.IsHTML() {
+			if item.Response.AcceptedContentType() {
 				extract <- item
 			} else {
 				if err = item.Ack(false); err != nil {
@@ -185,7 +185,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", err)
+				log.Errorln("Couldn't retrieve relative file path for item (rejecting):", item.URL(), err)
 				continue
 			}
 
@@ -195,11 +195,11 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
+				log.Errorln("Couldn't created directories for item (rejecting):", filePath, err)
 				continue
 			}
 
-			err = ioutil.WriteFile(filePath, item.HTMLBody, 0644)
+			err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
 
 			if err != nil {
 				item.Reject(false)
@@ -208,7 +208,20 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			}
 
 			log.Infoln("Wrote URL body to disk for:", item.URL())
-			extract <- item
+
+			contentType, err := item.Response.ParseContentType()
+			if err != nil {
+				log.Errorln("Couldn't determine Content-Type for item (rejecting):", item, err)
+				item.Reject(false)
+			}
+
+			// Only send HTML pages for URL extraction. All other
+			// pages should be written directly to disk and acknowledged.
+			if contentType == http_crawler.HTML {
+				extract <- item
+			} else {
+				item.Ack(false)
+			}
 
 			util.StatsDTiming("write_to_disk", start, time.Now())
 		}

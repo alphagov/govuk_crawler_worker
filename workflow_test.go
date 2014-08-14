@@ -138,7 +138,7 @@ var _ = Describe("Workflow", func() {
 
 				crawled := CrawlURL(ttlHashSet, outbound, crawler, 1, 1)
 
-				Expect((<-crawled).HTMLBody[0:24]).To(Equal([]byte(body)))
+				Expect((<-crawled).Response.Body[0:24]).To(Equal([]byte(body)))
 
 				server.Close()
 				close(outbound)
@@ -261,7 +261,10 @@ var _ = Describe("Workflow", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
+				item.Response = &CrawlerResponse{
+					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					ContentType: HTML,
+				}
 
 				outbound := make(chan *CrawlerMessageItem, 1)
 				extract := WriteItemToDisk(mirrorRoot, outbound)
@@ -278,7 +281,38 @@ var _ = Describe("Workflow", func() {
 				fileContent, err := ioutil.ReadFile(filePath)
 
 				Expect(err).To(BeNil())
-				Expect(fileContent).To(Equal(item.HTMLBody))
+				Expect(fileContent).To(Equal(item.Response.Body))
+
+				close(outbound)
+			})
+
+			It("doesn't forward the item for extraction if it's not HTML", func() {
+				body := []byte(`{"a": 2}`)
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+
+				err = queueManager.Publish("#", "text/plain", "https://www.gov.uk/extract-some-urls.json")
+				Expect(err).To(BeNil())
+
+				rootURL, _ := url.Parse("https://www.gov.uk")
+				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
+				item.Response = &CrawlerResponse{
+					Body:        body,
+					ContentType: JSON,
+				}
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+				Expect(len(extract)).To(Equal(0))
+
+				outbound <- item
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+				Eventually(func() []byte {
+					content, _ := ioutil.ReadFile(filePath)
+					return content
+				}).Should(Equal(body))
+				Expect(len(extract)).To(Equal(0))
 
 				close(outbound)
 			})
@@ -289,7 +323,9 @@ var _ = Describe("Workflow", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.HTMLBody = []byte(`<a href="https://www.gov.uk/some-url">a link</a>`)
+				item.Response = &CrawlerResponse{
+					Body: []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+				}
 
 				outbound := make(chan *CrawlerMessageItem, 1)
 				publish, acknowledge := ExtractURLs(outbound)

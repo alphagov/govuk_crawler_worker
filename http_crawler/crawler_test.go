@@ -68,10 +68,10 @@ var _ = Describe("Crawl", func() {
 			basicAuthCrawler := NewCrawler(rootURL, "0.0.0", &BasicAuth{"username", "password"})
 
 			testURL, _ := url.Parse(basicAuthTestServer.URL)
-			body, err := basicAuthCrawler.Crawl(testURL)
+			response, err := basicAuthCrawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(string(body)).To(Equal("You've successfully logged in with basic auth!"))
+			Expect(string(response.Body)).To(Equal("You've successfully logged in with basic auth!"))
 		})
 	})
 
@@ -88,10 +88,10 @@ var _ = Describe("Crawl", func() {
 			defer ts.Close()
 
 			testURL, _ := url.Parse(ts.URL)
-			body, err := crawler.Crawl(testURL)
+			response, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(string(body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
+			Expect(string(response.Body)).Should(MatchRegexp("GOV.UK Crawler Worker/" + "0.0.0"))
 		})
 
 		It("returns an error when a redirect is encounted", func() {
@@ -123,18 +123,18 @@ var _ = Describe("Crawl", func() {
 			defer ts.Close()
 
 			testURL, _ := url.Parse(ts.URL)
-			body, err := crawler.Crawl(testURL)
+			response, err := crawler.Crawl(testURL)
 
 			Expect(err).To(BeNil())
-			Expect(strings.TrimSpace(string(body))).To(Equal("Hello world"))
+			Expect(strings.TrimSpace(string(response.Body))).To(Equal("Hello world"))
 		})
 
 		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
 			testURL, _ := url.Parse("http://www.google.com/foo")
-			body, err := crawler.Crawl(testURL)
+			response, err := crawler.Crawl(testURL)
 
 			Expect(err).To(Equal(CannotCrawlURL))
-			Expect(body).To(Equal([]byte{}))
+			Expect(response).To(BeNil())
 		})
 
 		Describe("returning a retry error", func() {
@@ -143,10 +143,10 @@ var _ = Describe("Crawl", func() {
 				defer ts.Close()
 
 				testURL, _ := url.Parse(ts.URL)
-				body, err := crawler.Crawl(testURL)
+				response, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequest429Error))
-				Expect(body).To(Equal([]byte{}))
+				Expect(response).To(BeNil())
 			})
 
 			It("returns a retry error if we get a response code of Internal Server Error", func() {
@@ -154,10 +154,10 @@ var _ = Describe("Crawl", func() {
 				defer ts.Close()
 
 				testURL, _ := url.Parse(ts.URL)
-				body, err := crawler.Crawl(testURL)
+				response, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequest5XXError))
-				Expect(body).To(Equal([]byte{}))
+				Expect(response).To(BeNil())
 			})
 
 			It("returns a retry error if we get a response code of Gateway Timeout", func() {
@@ -165,10 +165,10 @@ var _ = Describe("Crawl", func() {
 				defer ts.Close()
 
 				testURL, _ := url.Parse(ts.URL)
-				body, err := crawler.Crawl(testURL)
+				response, err := crawler.Crawl(testURL)
 
 				Expect(err).To(Equal(RetryRequest5XXError))
-				Expect(body).To(Equal([]byte{}))
+				Expect(response).To(BeNil())
 			})
 		})
 	})
