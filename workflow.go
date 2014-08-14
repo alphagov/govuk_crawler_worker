@@ -211,8 +211,8 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			contentType, err := item.Response.ParseContentType()
 			if err != nil {
-				log.Errorln("Couldn't determine Content-Type for item (requeueing):", item, err)
-				item.Reject(true)
+				log.Errorln("Couldn't determine Content-Type for item (rejecting):", item, err)
+				item.Reject(false)
 			}
 
 			// Only send HTML pages for URL extraction. All other
