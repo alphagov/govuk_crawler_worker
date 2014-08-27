@@ -71,17 +71,14 @@ var _ = Describe("QueueConnection", func() {
 		It("should exit on non-recoverable errors", func(done Done) {
 			const expectedError = "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
 
-			var err error
 			proxy.KillConnected()
 
-			_, err = connection.Channel.QueueInspect(queueName)
+			_, err := connection.Channel.QueueInspect(queueName)
 			Expect(err.Error()).To(MatchRegexp(expectedError))
 
 			// We'd normally log.Fatalln() here to exit.
-			err = <-fatalErrs
-			Expect(err.Error()).To(MatchRegexp(expectedError))
-
-			amqpErr, _ := err.(*amqp.Error)
+			amqpErr := <-fatalErrs
+			Expect(amqpErr.Error()).To(MatchRegexp(expectedError))
 			Expect(amqpErr.Recover).To(Equal(false))
 
 			// Connection no longer works.
