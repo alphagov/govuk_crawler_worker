@@ -103,8 +103,8 @@ var _ = Describe("QueueConnection", func() {
 			// We'd normally log.Fatalln() here to exit.
 			amqpErr := <-fatalErrs
 			Expect(amqpErr.Error()).To(Equal(expectedError))
-			Expect(amqpErr.Recover).To(Equal(false))
-			Expect(amqpErr.Server).To(Equal(true))
+			Expect(amqpErr.Recover).To(BeFalse())
+			Expect(amqpErr.Server).To(BeTrue())
 
 			// Connection no longer works
 			_, err = connection.Channel.QueueInspect(queueName)
@@ -124,7 +124,7 @@ var _ = Describe("QueueConnection", func() {
 			// We'd normally log.Fatalln() here to exit.
 			amqpErr := <-fatalErrs
 			Expect(amqpErr.Error()).To(MatchRegexp(expectedError))
-			Expect(amqpErr.Recover).To(Equal(false))
+			Expect(amqpErr.Recover).To(BeFalse())
 
 			// Connection no longer works.
 			_, err = connection.Channel.QueueInspect(queueName)
