@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
+	"github.com/michaelklishin/rabbit-hole"
 	"github.com/streadway/amqp"
 )
 
@@ -85,8 +86,35 @@ var _ = Describe("QueueConnection", func() {
 			close(done)
 		})
 
+		It("should exit if server closes connection", func(done Done) {
+			expectedError := "Exception (320) Reason: \"CONNECTION_FORCED - Closed via management plugin\""
+
+			rmqc, err := rabbithole.NewClient("http://127.0.0.1:15672", "guest", "guest")
+			Expect(err).To(BeNil())
+
+			connections, err := rmqc.ListConnections()
+			Expect(err).To(BeNil())
+
+			for x := range connections {
+				_, err := rmqc.CloseConnection(connections[x].Name)
+				Expect(err).To(BeNil())
+			}
+
+			// We'd normally log.Fatalln() here to exit.
+			amqpErr := <-fatalErrs
+			Expect(amqpErr.Error()).To(Equal(expectedError))
+			Expect(amqpErr.Recover).To(Equal(false))
+			Expect(amqpErr.Server).To(Equal(true))
+
+			// Connection no longer works
+			_, err = connection.Channel.QueueInspect(queueName)
+			Expect(err).To(Equal(amqp.ErrClosed))
+
+			close(done)
+		})
+
 		It("should exit on non-recoverable errors", func(done Done) {
-			const expectedError = "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
+			expectedError := "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
 
 			proxy.KillConnected()
 
