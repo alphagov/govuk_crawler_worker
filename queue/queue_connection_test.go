@@ -24,11 +24,12 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("Connection errors", func() {
 		var (
-			connection *QueueConnection
-			proxy      *util.ProxyTCP
-			proxyAddr  string           = "localhost:5673"
-			queueName  string           = "govuk_crawler_worker-test-crawler-queue"
-			fatalErrs  chan *amqp.Error = make(chan *amqp.Error)
+			connection       *QueueConnection
+			proxy            *util.ProxyTCP
+			proxyAddr        string           = "localhost:5673"
+			queueName        string           = "govuk_crawler_worker-test-crawler-queue"
+			fatalErrs        chan *amqp.Error = make(chan *amqp.Error)
+			channelCloseMsgs chan string      = make(chan string)
 		)
 
 		BeforeEach(func() {
@@ -49,7 +50,9 @@ var _ = Describe("QueueConnection", func() {
 				fatalErrs <- err
 			}
 
-			connection.HandleChannelClose = func(_ string) {}
+			connection.HandleChannelClose = func(message string) {
+				channelCloseMsgs <- message
+			}
 
 			_, err = connection.QueueDeclare(queueName)
 			Expect(err).To(BeNil())
@@ -68,20 +71,31 @@ var _ = Describe("QueueConnection", func() {
 			Expect(deleted).To(Equal(0))
 		})
 
+		It("should call connection.HandleChannelClose() on recoverable errors", func(done Done) {
+			connection.Channel.Close()
+
+			// check connection.HandleChannelClose is called
+			message := <-channelCloseMsgs
+			Expect(message).To(Equal("Channel closed"))
+
+			// Connection no longer works
+			_, err := connection.Channel.QueueInspect(queueName)
+			Expect(err).To(Equal(amqp.ErrClosed))
+
+			close(done)
+		})
+
 		It("should exit on non-recoverable errors", func(done Done) {
 			const expectedError = "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
 
-			var err error
 			proxy.KillConnected()
 
-			_, err = connection.Channel.QueueInspect(queueName)
+			_, err := connection.Channel.QueueInspect(queueName)
 			Expect(err.Error()).To(MatchRegexp(expectedError))
 
 			// We'd normally log.Fatalln() here to exit.
-			err = <-fatalErrs
-			Expect(err.Error()).To(MatchRegexp(expectedError))
-
-			amqpErr, _ := err.(*amqp.Error)
+			amqpErr := <-fatalErrs
+			Expect(amqpErr.Error()).To(MatchRegexp(expectedError))
 			Expect(amqpErr.Recover).To(Equal(false))
 
 			// Connection no longer works.
