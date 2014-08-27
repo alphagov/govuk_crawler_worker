@@ -15,6 +15,9 @@ import (
 
 var _ = Describe("QueueConnection", func() {
 	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+	rabbitAdminAddr := util.GetEnvDefault("RABBITMQ_ADMIN_ADDRESS", "http://127.0.0.1:15672")
+	rabbitAdminUser := util.GetEnvDefault("RABBITMQ_ADMIN_USER", "guest")
+	rabbitAdminPass := util.GetEnvDefault("RABBITMQ_ADMIN_PASS", "guest")
 
 	It("fails if it can't connect to an AMQP server", func() {
 		connection, err := NewQueueConnection("amqp://guest:guest@localhost:50000/")
@@ -89,7 +92,7 @@ var _ = Describe("QueueConnection", func() {
 		It("should exit if server closes connection", func(done Done) {
 			expectedError := "Exception (320) Reason: \"CONNECTION_FORCED - Closed via management plugin\""
 
-			rmqc, err := rabbithole.NewClient("http://127.0.0.1:15672", "guest", "guest")
+			rmqc, err := rabbithole.NewClient(rabbitAdminAddr, rabbitAdminUser, rabbitAdminPass)
 			Expect(err).To(BeNil())
 
 			connections, err := rmqc.ListConnections()
