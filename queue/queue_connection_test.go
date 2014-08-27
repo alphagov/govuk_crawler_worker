@@ -24,11 +24,11 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("Connection errors", func() {
 		var (
-			connection *QueueConnection
-			proxy      *util.ProxyTCP
-			proxyAddr  string           = "localhost:5673"
-			queueName  string           = "govuk_crawler_worker-test-crawler-queue"
-			fatalErrs  chan *amqp.Error = make(chan *amqp.Error)
+			connection       *QueueConnection
+			proxy            *util.ProxyTCP
+			proxyAddr        string           = "localhost:5673"
+			queueName        string           = "govuk_crawler_worker-test-crawler-queue"
+			fatalErrs        chan *amqp.Error = make(chan *amqp.Error)
 			channelCloseMsgs chan string      = make(chan string)
 		)
 
