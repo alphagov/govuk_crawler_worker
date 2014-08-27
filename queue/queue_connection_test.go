@@ -1,11 +1,14 @@
 package queue_test
 
 import (
+	"fmt"
+
 	. "github.com/alphagov/govuk_crawler_worker/queue"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"net"
 	"net/url"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
@@ -95,11 +98,27 @@ var _ = Describe("QueueConnection", func() {
 			rmqc, err := rabbithole.NewClient(rabbitAdminAddr, rabbitAdminUser, rabbitAdminPass)
 			Expect(err).To(BeNil())
 
-			connections, err := rmqc.ListConnections()
+			amqpAddrParts, err := url.Parse(amqpAddr)
 			Expect(err).To(BeNil())
 
-			for x := range connections {
-				_, err := rmqc.CloseConnection(connections[x].Name)
+			amqpHost, amqpPort, err := net.SplitHostPort(amqpAddrParts.Host)
+			Expect(err).To(BeNil())
+
+			amqpIPAddresses, err := net.LookupHost(amqpHost)
+			Expect(err).To(BeNil())
+
+			amqpIP := amqpIPAddresses[0]
+			amqpAddrTup := net.JoinHostPort(amqpIP, amqpPort)
+
+			Expect(len(proxy.Conns)).Should(BeNumerically(">", 0))
+
+			_, err = rmqc.ListConnections()
+			Expect(err).To(BeNil())
+
+			for x := range proxy.Conns {
+				outgoingAddrTup := proxy.Conns[x].RConn.LocalAddr()
+				connectionName := fmt.Sprintf("%s -> %s", outgoingAddrTup, amqpAddrTup)
+				_, err := rmqc.CloseConnection(connectionName)
 				Expect(err).To(BeNil())
 			}
 
