@@ -29,6 +29,7 @@ var _ = Describe("QueueConnection", func() {
 			proxyAddr  string           = "localhost:5673"
 			queueName  string           = "govuk_crawler_worker-test-crawler-queue"
 			fatalErrs  chan *amqp.Error = make(chan *amqp.Error)
+			channelCloseMsgs chan string      = make(chan string)
 		)
 
 		BeforeEach(func() {
@@ -49,7 +50,9 @@ var _ = Describe("QueueConnection", func() {
 				fatalErrs <- err
 			}
 
-			connection.HandleChannelClose = func(_ string) {}
+			connection.HandleChannelClose = func(message string) {
+				channelCloseMsgs <- message
+			}
 
 			_, err = connection.QueueDeclare(queueName)
 			Expect(err).To(BeNil())
@@ -66,6 +69,20 @@ var _ = Describe("QueueConnection", func() {
 			deleted, err := connection.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
 			Expect(deleted).To(Equal(0))
+		})
+
+		It("should call connection.HandleChannelClose() on recoverable errors", func(done Done) {
+			connection.Channel.Close()
+
+			// check connection.HandleChannelClose is called
+			message := <-channelCloseMsgs
+			Expect(message).To(Equal("Channel closed"))
+
+			// Connection no longer works
+			_, err := connection.Channel.QueueInspect(queueName)
+			Expect(err).To(Equal(amqp.ErrClosed))
+
+			close(done)
 		})
 
 		It("should exit on non-recoverable errors", func(done Done) {
