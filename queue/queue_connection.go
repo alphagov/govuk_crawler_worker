@@ -35,7 +35,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 	queueConnection := &QueueConnection{
 		Connection:         connection,
 		Channel:            channel,
-		HandleChannelClose: func(message string) { log.Println(message) },
+		HandleChannelClose: func(message string) { log.Fatalln(message) },
 		HandleFatalError:   func(err *amqp.Error) { log.Fatalln(err) },
 		notifyClose:        channel.NotifyClose(make(chan *amqp.Error)),
 	}
