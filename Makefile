@@ -7,7 +7,7 @@ REPO_PATH := $(ORG_PATH)/govuk_crawler_worker
 all: deps test build
 
 deps: third_party/src/$(REPO_PATH) rm_compiled_self
-	go run third_party.go get -t -v .
+	go run third_party.go get -d -t -v ./...
 
 rm_compiled_self:
 	rm -rf third_party/pkg/*/$(REPO_PATH)
