@@ -213,6 +213,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			if err != nil {
 				log.Errorln("Couldn't determine Content-Type for item (rejecting):", item, err)
 				item.Reject(false)
+				continue
 			}
 
 			// Only send HTML pages for URL extraction. All other
