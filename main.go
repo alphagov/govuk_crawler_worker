@@ -40,21 +40,18 @@ const versionNumber string = "0.1.0"
 func init() {
 	jsonFlag := flag.Bool("json", false, "output logs as JSON")
 
-	debugFlag := flag.Bool("debug", false, "debug logging")
 	quietFlag := flag.Bool("quiet", false, "surpress all logging except errors")
-	verboseFlag := flag.Bool("verbose", false, "verbose logging")
+	verboseFlag := flag.Bool("verbose", false, "verbose logging showing debug messages")
 	versionFlag := flag.Bool("version", false, "show version and exit")
 	flag.Parse()
 
 	switch {
-	case *debugFlag:
-		log.SetLevel(log.DebugLevel)
 	case *quietFlag:
 		log.SetLevel(log.ErrorLevel)
 	case *verboseFlag:
-		log.SetLevel(log.InfoLevel)
+		log.SetLevel(log.DebugLevel)
 	default:
-		log.SetLevel(log.WarnLevel)
+		log.SetLevel(log.InfoLevel)
 	}
 
 	log.SetOutput(os.Stderr)
