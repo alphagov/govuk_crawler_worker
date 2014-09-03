@@ -39,7 +39,7 @@ func ReadFromQueue(
 
 			if message.IsBlacklisted() {
 				item.Ack(false)
-				log.Infoln("URL is blacklisted (acknowledging):", message.URL())
+				log.Debugln("URL is blacklisted (acknowledging):", message.URL())
 				continue
 			}
 
@@ -51,7 +51,7 @@ func ReadFromQueue(
 			}
 
 			if crawlCount == AlreadyCrawled {
-				log.Infoln("URL read from queue already crawled:", message.URL())
+				log.Debugln("URL read from queue already crawled:", message.URL())
 				if err = item.Ack(false); err != nil {
 					log.Errorln("Ack failed (ReadFromQueue): ", message.URL())
 				}
@@ -111,7 +111,7 @@ func CrawlURL(
 				continue
 			}
 
-			log.Infoln("Starting crawl of URL:", u)
+			log.Debugln("Starting crawl of URL:", u)
 			response, err := crawler.Crawl(u)
 			if err != nil {
 				switch err {
@@ -137,7 +137,7 @@ func CrawlURL(
 
 					item.Reject(false)
 					// log at INFO because redirect URLs are not a concern
-					log.Infoln("Couldn't crawl (rejecting):", u.String(), err)
+					log.Debugln("Couldn't crawl (rejecting):", u.String(), err)
 				default:
 					item.Reject(false)
 					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
@@ -207,7 +207,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 				continue
 			}
 
-			log.Infoln("Wrote URL body to disk for:", item.URL())
+			log.Debugln("Wrote URL body to disk for:", item.URL())
 
 			contentType, err := item.Response.ParseContentType()
 			if err != nil {
@@ -251,7 +251,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 				continue
 			}
 
-			log.Infoln("Extracted URLs:", len(urls))
+			log.Debugln("Extracted URLs:", len(urls))
 
 			for _, u := range urls {
 				publish <- u.String()
@@ -279,7 +279,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueM
 		}
 
 		if crawlCount == AlreadyCrawled {
-			log.Infoln("URL extracted from page already crawled:", url)
+			log.Debugln("URL extracted from page already crawled:", url)
 		} else if crawlCount == NotRecentlyCrawled {
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
@@ -307,7 +307,7 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		if err = item.Ack(false); err != nil {
 			log.Errorln("Ack failed (AcknowledgeItem): ", item.URL())
 		}
-		log.Infoln("Acknowledged:", url)
+		log.Debugln("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
 	}
