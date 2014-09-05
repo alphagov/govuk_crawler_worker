@@ -96,7 +96,7 @@ func StatsDTiming(label string, start, end time.Time) {
 }
 
 func StatsDGauge(label string, value int64) {
-	statsdClient.Gauge("gauge."+label, value)
+	statsdClient.Gauge("gauge."+label, value, false)
 }
 
 func newStatsDClient(host, prefix string) *statsd.StatsdClient {
