@@ -313,5 +313,15 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 			Expect(urls).To(HaveLen(1))
 		})
+
+		It("should not extract rel=nofollow URLs", func() {
+			item.Response.Body = []byte(`<a href="https://www.gov.uk/foo">Foo</a><a rel="nofollow" href="https://www.gov.uk/no-follow">No Follow</a>`)
+			expectedURL, _ := url.Parse("https://www.gov.uk/foo")
+			urls, err := item.ExtractURLs()
+
+			Expect(err).To(BeNil())
+			Expect(urls).To(HaveLen(1))
+			Expect(urls).To(ContainElement(expectedURL))
+		})
 	})
 })

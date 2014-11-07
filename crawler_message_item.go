@@ -207,10 +207,14 @@ func findHrefsByElementAttribute(
 	hrefs := []string{}
 
 	document.Find(element).Each(func(_ int, element *goquery.Selection) {
-		href, _ := element.Attr(attr)
-		unescapedHref, _ := url.QueryUnescape(href)
-		trimmedHref := strings.TrimSpace(unescapedHref)
-		hrefs = append(hrefs, trimmedHref)
+		rel, exists := element.Attr("rel")
+
+		if !exists || rel != "nofollow" {
+			href, _ := element.Attr(attr)
+			unescapedHref, _ := url.QueryUnescape(href)
+			trimmedHref := strings.TrimSpace(unescapedHref)
+			hrefs = append(hrefs, trimmedHref)
+		}
 	})
 
 	return hrefs
