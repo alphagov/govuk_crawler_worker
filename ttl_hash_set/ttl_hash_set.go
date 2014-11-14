@@ -5,9 +5,7 @@ import (
 	"sync"
 	"time"
 
-	// FIXME: Use the parent library once #35 has been fixed here:
-	// https://github.com/fzzy/radix/issues/35
-	"github.com/alphagov/radix/redis"
+	"github.com/fzzy/radix/redis"
 )
 
 const WaitBetweenReconnect = 2 * time.Second
