@@ -24,4 +24,4 @@ _testmain.go
 
 # Project-specific
 govuk_crawler_worker
-third_party
+_vendor

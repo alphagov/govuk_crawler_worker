@@ -9,9 +9,7 @@ import (
 	"time"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
-	// FIXME: Use the parent library once #35 has been fixed here:
-	// https://github.com/fzzy/radix/issues/35
-	"github.com/alphagov/radix/redis"
+	"github.com/fzzy/radix/redis"
 )
 
 var _ = Describe("TTLHashSet", func() {
