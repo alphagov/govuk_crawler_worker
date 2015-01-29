@@ -123,7 +123,7 @@ func CrawlURL(
 						sleepTime := 5 * time.Second
 
 						// Back off from crawling for a few seconds.
-						log.Warningln("Sleeping for: ", sleepTime, " seconds. Received 429 HTTP status")
+						log.Warningf("Sleeping for: %v. Received 429 HTTP status", sleepTime)
 						time.Sleep(sleepTime)
 					}
 
