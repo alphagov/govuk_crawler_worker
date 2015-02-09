@@ -16,11 +16,11 @@ type Status struct {
 
 type HealthCheck struct {
 	port         string
-	queueManager *queue.QueueManager
+	queueManager *queue.Manager
 	ttlHashSet   *ttl_hash_set.TTLHashSet
 }
 
-func NewHealthCheck(queueManager *queue.QueueManager, ttlHashSet *ttl_hash_set.TTLHashSet) *HealthCheck {
+func NewHealthCheck(queueManager *queue.Manager, ttlHashSet *ttl_hash_set.TTLHashSet) *HealthCheck {
 	return &HealthCheck{
 		queueManager: queueManager,
 		ttlHashSet:   ttlHashSet,

@@ -20,7 +20,7 @@ var _ = Describe("HealthCheck", func() {
 	var (
 		amqpAddr, exchangeName, prefix, queueName, redisAddr string
 		queueManagerErr, ttlHashSetErr                       error
-		queueManager                                         *queue.QueueManager
+		queueManager                                         *queue.Manager
 		ttlHashSet                                           *ttl_hash_set.TTLHashSet
 	)
 
@@ -33,7 +33,7 @@ var _ = Describe("HealthCheck", func() {
 	})
 
 	It("should show Redis and AMQP as being down if they're not connected", func() {
-		queueManager, queueManagerErr := queue.NewQueueManager(
+		queueManager, queueManagerErr := queue.NewManager(
 			amqpAddr, exchangeName, queueName)
 		Expect(queueManagerErr).To(BeNil())
 
@@ -63,7 +63,7 @@ var _ = Describe("HealthCheck", func() {
 
 	Describe("working with valid Redis and AMQP connections", func() {
 		BeforeEach(func() {
-			queueManager, queueManagerErr = queue.NewQueueManager(
+			queueManager, queueManagerErr = queue.NewManager(
 				amqpAddr, exchangeName, queueName)
 			Expect(queueManagerErr).To(BeNil())
 
@@ -110,7 +110,7 @@ var _ = Describe("HealthCheck", func() {
 
 	Describe("Independently closing the Producer and Consumer connections", func() {
 		BeforeEach(func() {
-			queueManager, queueManagerErr = queue.NewQueueManager(
+			queueManager, queueManagerErr = queue.NewManager(
 				amqpAddr, exchangeName, queueName)
 			Expect(queueManagerErr).To(BeNil())
 

@@ -4,14 +4,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type QueueManager struct {
+type Manager struct {
 	ExchangeName string
 	QueueName    string
 	Consumer     *QueueConnection
 	Producer     *QueueConnection
 }
 
-func NewQueueManager(amqpAddr string, exchangeName string, queueName string) (*QueueManager, error) {
+func NewManager(amqpAddr string, exchangeName string, queueName string) (*Manager, error) {
 	consumer, err := NewQueueConnection(amqpAddr)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func NewQueueManager(amqpAddr string, exchangeName string, queueName string) (*Q
 		return nil, err
 	}
 
-	return &QueueManager{
+	return &Manager{
 		ExchangeName: exchangeName,
 		QueueName:    queueName,
 		Consumer:     consumer,
@@ -35,7 +35,7 @@ func NewQueueManager(amqpAddr string, exchangeName string, queueName string) (*Q
 	}, nil
 }
 
-func (h *QueueManager) Close() error {
+func (h *Manager) Close() error {
 	err := h.Producer.Close()
 	if err != nil {
 		defer h.Consumer.Close()
@@ -45,11 +45,11 @@ func (h *QueueManager) Close() error {
 	return h.Consumer.Close()
 }
 
-func (h *QueueManager) Consume() (<-chan amqp.Delivery, error) {
+func (h *Manager) Consume() (<-chan amqp.Delivery, error) {
 	return h.Consumer.Consume(h.QueueName)
 }
 
-func (h *QueueManager) Publish(
+func (h *Manager) Publish(
 	routingKey string,
 	contentType string,
 	body string) error {

@@ -94,7 +94,7 @@ func main() {
 	defer ttlHashSet.Close()
 	log.Infoln("Connected to Redis service:", ttlHashSet)
 
-	queueManager, err := queue.NewQueueManager(amqpAddr, exchangeName, queueName)
+	queueManager, err := queue.NewManager(amqpAddr, exchangeName, queueName)
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -269,7 +269,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 	return publishChannel, acknowledgeChannel
 }
 
-func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.QueueManager, publish <-chan string) {
+func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manager, publish <-chan string) {
 	for url := range publish {
 		start := time.Now()
 		crawlCount, err := ttlHashSet.Get(url)

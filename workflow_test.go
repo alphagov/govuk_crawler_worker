@@ -32,7 +32,7 @@ var _ = Describe("Workflow", func() {
 		var (
 			err             error
 			mirrorRoot      string
-			queueManager    *QueueManager
+			queueManager    *Manager
 			queueManagerErr error
 			ttlHashSet      *TTLHashSet
 			ttlHashSetErr   error
@@ -51,7 +51,7 @@ var _ = Describe("Workflow", func() {
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
 
-			queueManager, queueManagerErr = NewQueueManager(
+			queueManager, queueManagerErr = NewManager(
 				amqpAddr,
 				exchangeName,
 				queueName)
