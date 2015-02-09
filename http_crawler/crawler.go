@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	CannotCrawlURL       = errors.New("Cannot crawl URLs that don't live under the provided root URL")
-	NotFoundError        = errors.New("404 Not Found")
-	RedirectError        = errors.New("HTTP redirect encountered")
-	RetryRequest5XXError = errors.New("Retry request: 5XX HTTP Response returned")
-	RetryRequest429Error = errors.New("Retry request: 429 HTTP Response returned (back off)")
+	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	ErrNotFound        = errors.New("404 Not Found")
+	ErrRedirect        = errors.New("HTTP redirect encountered")
+	ErrRetryRequest5XX = errors.New("Retry request: 5XX HTTP Response returned")
+	ErrRetryRequest429 = errors.New("Retry request: 429 HTTP Response returned (back off)")
 
 	redirectStatusCodes = []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect}
 
@@ -47,7 +47,7 @@ func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *C
 
 func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	if !strings.HasPrefix(crawlURL.Host, c.RootURL.Host) {
-		return nil, CannotCrawlURL
+		return nil, ErrCannotCrawlURL
 	}
 
 	req, err := http.NewRequest("GET", crawlURL.String(), nil)
@@ -73,13 +73,13 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 
 	switch {
 	case resp.StatusCode == 429:
-		return nil, RetryRequest429Error
+		return nil, ErrRetryRequest429
 	case contains(Retry5XXStatusCodes(), resp.StatusCode):
-		return nil, RetryRequest5XXError
+		return nil, ErrRetryRequest5XX
 	case resp.StatusCode == http.StatusNotFound:
-		return nil, NotFoundError
+		return nil, ErrNotFound
 	case contains(redirectStatusCodes, resp.StatusCode):
-		return nil, RedirectError
+		return nil, ErrRedirect
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)

@@ -133,7 +133,7 @@ var _ = Describe("Crawl", func() {
 			testURL, _ := url.Parse("http://www.google.com/foo")
 			response, err := crawler.Crawl(testURL)
 
-			Expect(err).To(Equal(CannotCrawlURL))
+			Expect(err).To(Equal(ErrCannotCrawlURL))
 			Expect(response).To(BeNil())
 		})
 
@@ -145,7 +145,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequest429Error))
+				Expect(err).To(Equal(ErrRetryRequest429))
 				Expect(response).To(BeNil())
 			})
 
@@ -156,7 +156,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequest5XXError))
+				Expect(err).To(Equal(ErrRetryRequest5XX))
 				Expect(response).To(BeNil())
 			})
 
@@ -167,7 +167,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(RetryRequest5XXError))
+				Expect(err).To(Equal(ErrRetryRequest5XX))
 				Expect(response).To(BeNil())
 			})
 		})
