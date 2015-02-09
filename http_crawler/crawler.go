@@ -71,17 +71,15 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		switch {
-		case resp.StatusCode == 429:
-			return nil, RetryRequest429Error
-		case contains(Retry5XXStatusCodes(), resp.StatusCode):
-			return nil, RetryRequest5XXError
-		case resp.StatusCode == http.StatusNotFound:
-			return nil, NotFoundError
-		case contains(redirectStatusCodes, resp.StatusCode):
-			return nil, RedirectError
-		}
+	switch {
+	case resp.StatusCode == 429:
+		return nil, RetryRequest429Error
+	case contains(Retry5XXStatusCodes(), resp.StatusCode):
+		return nil, RetryRequest5XXError
+	case resp.StatusCode == http.StatusNotFound:
+		return nil, NotFoundError
+	case contains(redirectStatusCodes, resp.StatusCode):
+		return nil, RedirectError
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
