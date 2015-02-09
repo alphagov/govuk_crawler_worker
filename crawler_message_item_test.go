@@ -208,38 +208,38 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("should extract all a[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/"></a></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/")
+			expectedURL, _ := url.Parse("https://www.gov.uk/")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all img[@src] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><img src="https://www.gov.uk/image.png" /></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/image.png")
+			expectedURL, _ := url.Parse("https://www.gov.uk/image.png")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all link[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<head><link rel="icon" href="https://www.gov.uk/favicon.ico"></head>`)
-			expectedUrl, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL, _ := url.Parse("https://www.gov.uk/favicon.ico")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all script[@src] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(
 				`<head><script type="text/javascript" src="https://www.gov.uk/jq.js"></script></head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedURL, _ := url.Parse("https://www.gov.uk/jq.js")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("successfully extracts multiple matching URLs from the provided DOM", func() {
@@ -249,12 +249,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 <link rel="icon" href="https://www.gov.uk/favicon.ico">
 </head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl1, _ := url.Parse("https://www.gov.uk/jq.js")
-			expectedUrl2, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL1, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedURL2, _ := url.Parse("https://www.gov.uk/favicon.ico")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl1))
-			Expect(urls).To(ContainElement(expectedUrl2))
+			Expect(urls).To(ContainElement(expectedURL1))
+			Expect(urls).To(ContainElement(expectedURL2))
 		})
 
 		It("will not provide URLs that don't match the provided prefix rootURL", func() {
@@ -268,30 +268,30 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("will unescape URLs", func() {
 			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/bar%20"></a></div>`)
-			expectedUrl, _ := url.Parse("http://www.gov.uk/bar")
+			expectedURL, _ := url.Parse("http://www.gov.uk/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract relative URLs", func() {
 			item.Response.Body = []byte(`<div><a href="/foo/bar">a</a><a href="mailto:c@d.com">b</a></div>`)
-			expectedUrl, _ := url.Parse("https://www.gov.uk/foo/bar")
+			expectedURL, _ := url.Parse("https://www.gov.uk/foo/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
 			Expect(len(urls)).To(Equal(1))
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should remove the #fragment when extracting URLs", func() {
 			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/#germany"></a></div>`)
-			expectedUrl, _ := url.Parse("http://www.gov.uk/")
+			expectedURL, _ := url.Parse("http://www.gov.uk/")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("removes paths that are blacklisted", func() {
