@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var mirrorRoot, testUrl, urlPath string
+	var mirrorRoot, testURL, urlPath string
 	var delivery amqp.Delivery
 	var err error
 	var html []byte
@@ -31,10 +31,10 @@ var _ = Describe("CrawlerMessageItem", func() {
 		}
 
 		rootURL, _ = url.Parse("https://www.gov.uk")
-		testUrl = rootURL.String() + urlPath
+		testURL = rootURL.String() + urlPath
 		urlPath = "/government/organisations"
 
-		delivery = amqp.Delivery{Body: []byte(testUrl)}
+		delivery = amqp.Delivery{Body: []byte(testURL)}
 		item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 
 		html = []byte(`<html>
@@ -73,13 +73,13 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("returns its URL", func() {
-		Expect(item.URL()).To(Equal(testUrl))
+		Expect(item.URL()).To(Equal(testURL))
 	})
 
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
-			testUrl = "https://user:pass@example.com:8080/test/url"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = "https://user:pass@example.com:8080/test/url"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -88,8 +88,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("strips preceeding path traversals and resolves the remaining path", func() {
-			testUrl = rootURL.String() + "/../../one/./two/../three"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/../../one/./two/../three"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -98,8 +98,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves case sensitivity", func() {
-			testUrl = rootURL.String() + "/test/UPPER/MiXeD"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/test/UPPER/MiXeD"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -108,8 +108,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves non-alphanumeric characters", func() {
-			testUrl = rootURL.String() + "/test/!T@e£s$t/U^R*L(){}"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/test/!T@e£s$t/U^R*L(){}"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -118,8 +118,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves multiple dashes", func() {
-			testUrl = rootURL.String() + "/test/one-two--three---"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/test/one-two--three---"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -128,8 +128,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves non-latin chars and not URL encode them", func() {
-			testUrl = rootURL.String() + `/test/如何在香港申請英國簽證`
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + `/test/如何在香港申請英國簽證`
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -138,8 +138,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("adds an index.html suffix when URL references a directory", func() {
-			testUrl = rootURL.String() + "/this/url/has/a/trailing/slash/"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/this/url/has/a/trailing/slash/"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -148,8 +148,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
-			testUrl = rootURL.String() + "/"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -158,7 +158,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("omits URL query parameters", func() {
-			delivery := amqp.Delivery{Body: []byte(testUrl + "?foo=bar")}
+			delivery := amqp.Delivery{Body: []byte(testURL + "?foo=bar")}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -167,7 +167,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("omits URL fragments", func() {
-			delivery := amqp.Delivery{Body: []byte(testUrl + "#foo")}
+			delivery := amqp.Delivery{Body: []byte(testURL + "#foo")}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -176,8 +176,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("supports ATOM URLs", func() {
-			testUrl = rootURL.String() + "/things.atom"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/things.atom"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: ATOM}
@@ -186,8 +186,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("supports JSON URLs", func() {
-			testUrl = rootURL.String() + "/api.json"
-			delivery = amqp.Delivery{Body: []byte(testUrl)}
+			testURL = rootURL.String() + "/api.json"
+			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: JSON}
@@ -208,38 +208,38 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("should extract all a[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/"></a></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/")
+			expectedURL, _ := url.Parse("https://www.gov.uk/")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all img[@src] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><img src="https://www.gov.uk/image.png" /></div>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/image.png")
+			expectedURL, _ := url.Parse("https://www.gov.uk/image.png")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all link[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<head><link rel="icon" href="https://www.gov.uk/favicon.ico"></head>`)
-			expectedUrl, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL, _ := url.Parse("https://www.gov.uk/favicon.ico")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract all script[@src] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(
 				`<head><script type="text/javascript" src="https://www.gov.uk/jq.js"></script></head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedURL, _ := url.Parse("https://www.gov.uk/jq.js")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("successfully extracts multiple matching URLs from the provided DOM", func() {
@@ -249,12 +249,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 <link rel="icon" href="https://www.gov.uk/favicon.ico">
 </head>`)
 			urls, err := item.ExtractURLs()
-			expectedUrl1, _ := url.Parse("https://www.gov.uk/jq.js")
-			expectedUrl2, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL1, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedURL2, _ := url.Parse("https://www.gov.uk/favicon.ico")
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl1))
-			Expect(urls).To(ContainElement(expectedUrl2))
+			Expect(urls).To(ContainElement(expectedURL1))
+			Expect(urls).To(ContainElement(expectedURL2))
 		})
 
 		It("will not provide URLs that don't match the provided prefix rootURL", func() {
@@ -268,30 +268,30 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("will unescape URLs", func() {
 			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/bar%20"></a></div>`)
-			expectedUrl, _ := url.Parse("http://www.gov.uk/bar")
+			expectedURL, _ := url.Parse("http://www.gov.uk/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract relative URLs", func() {
 			item.Response.Body = []byte(`<div><a href="/foo/bar">a</a><a href="mailto:c@d.com">b</a></div>`)
-			expectedUrl, _ := url.Parse("https://www.gov.uk/foo/bar")
+			expectedURL, _ := url.Parse("https://www.gov.uk/foo/bar")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
 			Expect(len(urls)).To(Equal(1))
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should remove the #fragment when extracting URLs", func() {
 			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/#germany"></a></div>`)
-			expectedUrl, _ := url.Parse("http://www.gov.uk/")
+			expectedURL, _ := url.Parse("http://www.gov.uk/")
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedUrl))
+			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("removes paths that are blacklisted", func() {

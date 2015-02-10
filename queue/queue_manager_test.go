@@ -9,11 +9,11 @@ import (
 	"github.com/alphagov/govuk_crawler_worker/util"
 )
 
-var _ = Describe("QueueManager", func() {
+var _ = Describe("Manager", func() {
 	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 
 	It("returns an error if passed a bad connection address", func() {
-		queueManager, err := NewQueueManager(
+		queueManager, err := NewManager(
 			"amqp://guest:guest@localhost:50000/",
 			"test-manager-exchange",
 			"test-manager-queue")
@@ -26,7 +26,7 @@ var _ = Describe("QueueManager", func() {
 		exchangeName := "govuk_crawler_worker-test-manager-exchange"
 		queueName := "govuk_crawler_worker-test-manager-queue"
 
-		queueManager, err := NewQueueManager(
+		queueManager, err := NewManager(
 			amqpAddr,
 			exchangeName,
 			queueName)
@@ -49,7 +49,7 @@ var _ = Describe("QueueManager", func() {
 
 	Describe("working with an AMQP service", func() {
 		var (
-			queueManager    *QueueManager
+			queueManager    *Manager
 			queueManagerErr error
 		)
 
@@ -57,7 +57,7 @@ var _ = Describe("QueueManager", func() {
 		queueName := "govuk_crawler_worker-test-handler-queue"
 
 		BeforeEach(func() {
-			queueManager, queueManagerErr = NewQueueManager(
+			queueManager, queueManagerErr = NewManager(
 				amqpAddr,
 				exchangeName,
 				queueName)

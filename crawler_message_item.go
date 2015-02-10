@@ -78,10 +78,10 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 	}
 
 	urlElementMatches := [][]string{
-		[]string{"a", "href"},
-		[]string{"img", "src"},
-		[]string{"link", "href"},
-		[]string{"script", "src"},
+		{"a", "href"},
+		{"img", "src"},
+		{"link", "href"},
+		{"script", "src"},
 	}
 
 	var hrefs []string

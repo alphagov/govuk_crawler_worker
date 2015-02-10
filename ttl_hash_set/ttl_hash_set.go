@@ -132,8 +132,8 @@ func (t *TTLHashSet) Exists(key string) (bool, error) {
 	return exists, err
 }
 
-// Sends a PING to the underlying Redis service. This can be used to
-// healthcheck any Redis servers we're connected to.
+// Ping sends a PING command to the underlying Redis service. This can be used
+// to healthcheck any Redis servers we're connected to.
 func (t *TTLHashSet) Ping() (string, error) {
 	t.mutex.Lock()
 	ping, err := t.client.Cmd("PING").Str()
