@@ -12,11 +12,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var _ = Describe("QueueConnection", func() {
+var _ = Describe("Connection", func() {
 	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 
 	It("fails if it can't connect to an AMQP server", func() {
-		connection, err := NewQueueConnection("amqp://guest:guest@localhost:50000/")
+		connection, err := NewConnection("amqp://guest:guest@localhost:50000/")
 
 		Expect(err).ToNot(BeNil())
 		Expect(connection).To(BeNil())
@@ -24,7 +24,7 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("Connection errors", func() {
 		var (
-			connection       *QueueConnection
+			connection       *Connection
 			proxy            *util.ProxyTCP
 			proxyAddr        string           = "localhost:5673"
 			queueName        string           = "govuk_crawler_worker-test-crawler-queue"
@@ -42,7 +42,7 @@ var _ = Describe("QueueConnection", func() {
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			connection, err = NewQueueConnection(proxyURL)
+			connection, err = NewConnection(proxyURL)
 			Expect(err).To(BeNil())
 			Expect(connection).ToNot(BeNil())
 
@@ -64,7 +64,7 @@ var _ = Describe("QueueConnection", func() {
 
 			// Assume existing connection is dead.
 			connection.Close()
-			connection, _ = NewQueueConnection(amqpAddr)
+			connection, _ = NewConnection(amqpAddr)
 
 			deleted, err := connection.Channel.QueueDelete(queueName, false, false, false)
 			Expect(err).To(BeNil())
@@ -108,12 +108,12 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("Connecting to a running AMQP service", func() {
 		var (
-			connection    *QueueConnection
+			connection    *Connection
 			connectionErr error
 		)
 
 		BeforeEach(func() {
-			connection, connectionErr = NewQueueConnection(amqpAddr)
+			connection, connectionErr = NewConnection(amqpAddr)
 			connection.HandleChannelClose = func(_ string) {}
 		})
 
@@ -183,8 +183,8 @@ var _ = Describe("QueueConnection", func() {
 
 	Describe("working with messages on the queue", func() {
 		var (
-			publisher *QueueConnection
-			consumer  *QueueConnection
+			publisher *Connection
+			consumer  *Connection
 			err       error
 		)
 
@@ -192,11 +192,11 @@ var _ = Describe("QueueConnection", func() {
 		queueName := "govuk_crawler_worker-test-crawler-queue"
 
 		BeforeEach(func() {
-			publisher, err = NewQueueConnection(amqpAddr)
+			publisher, err = NewConnection(amqpAddr)
 			Expect(err).To(BeNil())
 			Expect(publisher).ToNot(BeNil())
 
-			consumer, err = NewQueueConnection(amqpAddr)
+			consumer, err = NewConnection(amqpAddr)
 			Expect(err).To(BeNil())
 			Expect(consumer).ToNot(BeNil())
 
