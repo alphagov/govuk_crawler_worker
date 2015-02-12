@@ -7,17 +7,17 @@ import (
 type Manager struct {
 	ExchangeName string
 	QueueName    string
-	Consumer     *QueueConnection
-	Producer     *QueueConnection
+	Consumer     *Connection
+	Producer     *Connection
 }
 
 func NewManager(amqpAddr string, exchangeName string, queueName string) (*Manager, error) {
-	consumer, err := NewQueueConnection(amqpAddr)
+	consumer, err := NewConnection(amqpAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	producer, err := NewQueueConnection(amqpAddr)
+	producer, err := NewConnection(amqpAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (h *Manager) Publish(
 		body)
 }
 
-func setupExchangeAndQueue(connection *QueueConnection, exchangeName string, queueName string) error {
+func setupExchangeAndQueue(connection *Connection, exchangeName string, queueName string) error {
 	var err error
 
 	err = connection.ExchangeDeclare(exchangeName, "topic")

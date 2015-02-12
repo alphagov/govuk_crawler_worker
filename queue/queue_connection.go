@@ -6,7 +6,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type QueueConnection struct {
+type Connection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
 
@@ -16,7 +16,7 @@ type QueueConnection struct {
 	notifyClose chan *amqp.Error
 }
 
-func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
+func NewConnection(amqpURI string) (*Connection, error) {
 	connection, err := amqp.Dial(amqpURI)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 		return nil, err
 	}
 
-	queueConnection := &QueueConnection{
+	queueConnection := &Connection{
 		Connection:         connection,
 		Channel:            channel,
 		HandleChannelClose: func(message string) { log.Fatalln(message) },
@@ -56,7 +56,7 @@ func NewQueueConnection(amqpURI string) (*QueueConnection, error) {
 	return queueConnection, nil
 }
 
-func (c *QueueConnection) Close() error {
+func (c *Connection) Close() error {
 	err := c.Channel.Close()
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (c *QueueConnection) Close() error {
 	return c.Connection.Close()
 }
 
-func (c *QueueConnection) Consume(queueName string) (<-chan amqp.Delivery, error) {
+func (c *Connection) Consume(queueName string) (<-chan amqp.Delivery, error) {
 	return c.Channel.Consume(
 		queueName,
 		"",
@@ -76,7 +76,7 @@ func (c *QueueConnection) Consume(queueName string) (<-chan amqp.Delivery, error
 		nil)   // arguments
 }
 
-func (c *QueueConnection) ExchangeDeclare(exchangeName string, exchangeType string) error {
+func (c *Connection) ExchangeDeclare(exchangeName string, exchangeType string) error {
 	return c.Channel.ExchangeDeclare(
 		exchangeName, // name of the exchange
 		exchangeType, // type
@@ -88,7 +88,7 @@ func (c *QueueConnection) ExchangeDeclare(exchangeName string, exchangeType stri
 	)
 }
 
-func (c *QueueConnection) QueueDeclare(queueName string) (amqp.Queue, error) {
+func (c *Connection) QueueDeclare(queueName string) (amqp.Queue, error) {
 	queue, err := c.Channel.QueueDeclare(
 		queueName, // name of the queue
 		true,      // durable
@@ -105,7 +105,7 @@ func (c *QueueConnection) QueueDeclare(queueName string) (amqp.Queue, error) {
 	return queue, nil
 }
 
-func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName string) error {
+func (c *Connection) BindQueueToExchange(queueName string, exchangeName string) error {
 	return c.Channel.QueueBind(
 		queueName,
 		"#", // key to marshall with
@@ -114,7 +114,7 @@ func (c *QueueConnection) BindQueueToExchange(queueName string, exchangeName str
 		nil)  // arguments
 }
 
-func (c *QueueConnection) Publish(exchangeName string, routingKey string, contentType string, body string) error {
+func (c *Connection) Publish(exchangeName string, routingKey string, contentType string, body string) error {
 	return c.Channel.Publish(
 		exchangeName, // publish to an exchange
 		routingKey,   // routing to 0 or more queues
