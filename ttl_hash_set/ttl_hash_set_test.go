@@ -1,7 +1,7 @@
 package ttl_hash_set_test
 
 import (
-	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,7 +17,7 @@ var _ = Describe("TTLHashSet", func() {
 	prefix := "govuk_mirror_crawler_test"
 
 	It("returns an error when asking for a TTLHashSet object that can't connect to redis", func() {
-		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000", time.Hour)
+		ttlHashSet, err := ttl_hash_set.NewTTLHashSet(prefix, "127.0.0.1:20000", time.Hour)
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
@@ -28,7 +28,7 @@ var _ = Describe("TTLHashSet", func() {
 			proxy         *util.ProxyTCP
 			proxyAddr     string = "127.0.0.1:6380"
 			key           string = "reconnect"
-			ttlHashSet    *TTLHashSet
+			ttlHashSet    *ttl_hash_set.TTLHashSet
 			reconnectTime time.Duration = 2 * time.Second
 			delayBetween  time.Duration = reconnectTime / 10
 		)
@@ -40,7 +40,7 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr, time.Hour)
+			ttlHashSet, err = ttl_hash_set.NewTTLHashSet(prefix, proxyAddr, time.Hour)
 
 			Expect(err).To(BeNil())
 			Expect(ttlHashSet).ToNot(BeNil())
@@ -107,12 +107,12 @@ var _ = Describe("TTLHashSet", func() {
 
 	Describe("Working with a redis service", func() {
 		var (
-			ttlHashSet    *TTLHashSet
+			ttlHashSet    *ttl_hash_set.TTLHashSet
 			ttlHashSetErr error
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
 		})
 
 		AfterEach(func() {

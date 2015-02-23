@@ -13,7 +13,7 @@ import (
 	. "github.com/alphagov/govuk_crawler_worker"
 	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
 	. "github.com/alphagov/govuk_crawler_worker/queue"
-	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -34,7 +34,7 @@ var _ = Describe("Workflow", func() {
 			mirrorRoot      string
 			queueManager    *Manager
 			queueManagerErr error
-			ttlHashSet      *TTLHashSet
+			ttlHashSet      *ttl_hash_set.TTLHashSet
 			ttlHashSetErr   error
 			rootURL         *url.URL
 		)
@@ -48,7 +48,7 @@ var _ = Describe("Workflow", func() {
 
 			rootURL, _ = url.Parse("https://www.gov.uk")
 
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
 
 			queueManager, queueManagerErr = NewManager(
