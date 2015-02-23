@@ -1,7 +1,7 @@
 package queue_test
 
 import (
-	. "github.com/alphagov/govuk_crawler_worker/queue"
+	"github.com/alphagov/govuk_crawler_worker/queue"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +13,7 @@ var _ = Describe("Manager", func() {
 	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 
 	It("returns an error if passed a bad connection address", func() {
-		queueManager, err := NewManager(
+		queueManager, err := queue.NewManager(
 			"amqp://guest:guest@localhost:50000/",
 			"test-manager-exchange",
 			"test-manager-queue")
@@ -26,7 +26,7 @@ var _ = Describe("Manager", func() {
 		exchangeName := "govuk_crawler_worker-test-manager-exchange"
 		queueName := "govuk_crawler_worker-test-manager-queue"
 
-		queueManager, err := NewManager(
+		queueManager, err := queue.NewManager(
 			amqpAddr,
 			exchangeName,
 			queueName)
@@ -49,7 +49,7 @@ var _ = Describe("Manager", func() {
 
 	Describe("working with an AMQP service", func() {
 		var (
-			queueManager    *Manager
+			queueManager    *queue.Manager
 			queueManagerErr error
 		)
 
@@ -57,7 +57,7 @@ var _ = Describe("Manager", func() {
 		queueName := "govuk_crawler_worker-test-handler-queue"
 
 		BeforeEach(func() {
-			queueManager, queueManagerErr = NewManager(
+			queueManager, queueManagerErr = queue.NewManager(
 				amqpAddr,
 				exchangeName,
 				queueName)

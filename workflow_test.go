@@ -12,7 +12,7 @@ import (
 
 	. "github.com/alphagov/govuk_crawler_worker"
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
-	. "github.com/alphagov/govuk_crawler_worker/queue"
+	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,7 +32,7 @@ var _ = Describe("Workflow", func() {
 		var (
 			err             error
 			mirrorRoot      string
-			queueManager    *Manager
+			queueManager    *queue.Manager
 			queueManagerErr error
 			ttlHashSet      *ttl_hash_set.TTLHashSet
 			ttlHashSetErr   error
@@ -51,7 +51,7 @@ var _ = Describe("Workflow", func() {
 			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
 
-			queueManager, queueManagerErr = NewManager(
+			queueManager, queueManagerErr = queue.NewManager(
 				amqpAddr,
 				exchangeName,
 				queueName)
