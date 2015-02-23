@@ -1,17 +1,17 @@
 package http_crawler_test
 
 import (
-	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("CrawlerResponse", func() {
-	var response *CrawlerResponse
+	var response *http_crawler.CrawlerResponse
 
 	BeforeEach(func() {
-		response = &CrawlerResponse{}
+		response = &http_crawler.CrawlerResponse{}
 	})
 
 	Describe("AcceptedContentType", func() {
@@ -24,8 +24,24 @@ var _ = Describe("CrawlerResponse", func() {
 			for _, contentType := range []string{
 				// Provide one with a charset to be sure.
 				"text/html; charset=utf-8",
-				ATOM, CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
-				JPEG, JSON, ODP, ODS, ODT, PDF, PNG, XLS, XLSX,
+				http_crawler.ATOM,
+				http_crawler.CSS,
+				http_crawler.CSV,
+				http_crawler.DOCX,
+				http_crawler.GIF,
+				http_crawler.HTML,
+				http_crawler.ICO,
+				http_crawler.ICS,
+				http_crawler.JAVASCRIPT,
+				http_crawler.JPEG,
+				http_crawler.JSON,
+				http_crawler.ODP,
+				http_crawler.ODS,
+				http_crawler.ODT,
+				http_crawler.PDF,
+				http_crawler.PNG,
+				http_crawler.XLS,
+				http_crawler.XLSX,
 			} {
 				response.ContentType = contentType
 				Expect(response.AcceptedContentType()).To(BeTrue())
@@ -35,7 +51,7 @@ var _ = Describe("CrawlerResponse", func() {
 
 	Describe("ContentType", func() {
 		It("returns the error if we can't parse the content type", func() {
-			response := &CrawlerResponse{}
+			response := &http_crawler.CrawlerResponse{}
 			mime, err := response.ParseContentType()
 
 			Expect(mime).To(BeEmpty())
@@ -43,11 +59,11 @@ var _ = Describe("CrawlerResponse", func() {
 		})
 
 		It("returns the simplified mime type of the HTTP Content-Type value", func() {
-			response := &CrawlerResponse{ContentType: "application/json; charset=utf-8"}
+			response := &http_crawler.CrawlerResponse{ContentType: "application/json; charset=utf-8"}
 
 			mime, err := response.ParseContentType()
 
-			Expect(mime).To(Equal(JSON))
+			Expect(mime).To(Equal(http_crawler.JSON))
 			Expect(err).To(BeNil())
 		})
 	})

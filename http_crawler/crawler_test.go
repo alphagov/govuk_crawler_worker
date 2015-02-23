@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,18 +24,18 @@ func testServer(status int, body string) *httptest.Server {
 }
 
 var _ = Describe("Crawl", func() {
-	var crawler *Crawler
+	var crawler *http_crawler.Crawler
 
 	BeforeEach(func() {
 		rootURL, _ := url.Parse("http://127.0.0.1")
-		crawler = NewCrawler(rootURL, "0.0.0", nil)
+		crawler = http_crawler.NewCrawler(rootURL, "0.0.0", nil)
 		Expect(crawler).ToNot(BeNil())
 	})
 
-	Describe("NewCrawler()", func() {
+	Describe("http_crawler.NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
 			rootURL, _ := url.Parse("https://www.gov.uk/")
-			GOVUKCrawler := NewCrawler(rootURL, "0.0.0", nil)
+			GOVUKCrawler := http_crawler.NewCrawler(rootURL, "0.0.0", nil)
 			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
 		})
 
@@ -65,7 +65,7 @@ var _ = Describe("Crawl", func() {
 			defer basicAuthTestServer.Close()
 
 			rootURL, _ := url.Parse("http://127.0.0.1")
-			basicAuthCrawler := NewCrawler(rootURL, "0.0.0", &BasicAuth{"username", "password"})
+			basicAuthCrawler := http_crawler.NewCrawler(rootURL, "0.0.0", &http_crawler.BasicAuth{"username", "password"})
 
 			testURL, _ := url.Parse(basicAuthTestServer.URL)
 			response, err := basicAuthCrawler.Crawl(testURL)
@@ -133,7 +133,7 @@ var _ = Describe("Crawl", func() {
 			testURL, _ := url.Parse("http://www.google.com/foo")
 			response, err := crawler.Crawl(testURL)
 
-			Expect(err).To(Equal(ErrCannotCrawlURL))
+			Expect(err).To(Equal(http_crawler.ErrCannotCrawlURL))
 			Expect(response).To(BeNil())
 		})
 
@@ -145,7 +145,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(ErrRetryRequest429))
+				Expect(err).To(Equal(http_crawler.ErrRetryRequest429))
 				Expect(response).To(BeNil())
 			})
 
@@ -156,7 +156,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(ErrRetryRequest5XX))
+				Expect(err).To(Equal(http_crawler.ErrRetryRequest5XX))
 				Expect(response).To(BeNil())
 			})
 
@@ -167,7 +167,7 @@ var _ = Describe("Crawl", func() {
 				testURL, _ := url.Parse(ts.URL)
 				response, err := crawler.Crawl(testURL)
 
-				Expect(err).To(Equal(ErrRetryRequest5XX))
+				Expect(err).To(Equal(http_crawler.ErrRetryRequest5XX))
 				Expect(response).To(BeNil())
 			})
 		})
@@ -175,7 +175,7 @@ var _ = Describe("Crawl", func() {
 
 	Describe("RetryStatusCodes", func() {
 		It("should return a fixed int array with values 429, 500..599", func() {
-			statusCodes := Retry5XXStatusCodes()
+			statusCodes := http_crawler.Retry5XXStatusCodes()
 
 			Expect(len(statusCodes)).To(Equal(100))
 			Expect(statusCodes[0]).To(Equal(500))

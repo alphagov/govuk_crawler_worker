@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	. "github.com/alphagov/govuk_crawler_worker"
-	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,7 +42,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 <body><h1>TEST</h1></body>
 </html>
 `)
-		item.Response = &CrawlerResponse{Body: html}
+		item.Response = &http_crawler.CrawlerResponse{Body: html}
 	})
 
 	AfterEach(func() {
@@ -60,7 +60,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("can set the Response.Body of the crawled URL", func() {
 			item := NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: []byte("foo")}
+			item.Response = &http_crawler.CrawlerResponse{Body: []byte("foo")}
 
 			Expect(item.Response.Body).To(Equal([]byte("foo")))
 		})
@@ -82,7 +82,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("test/url.html"))
 		})
@@ -92,7 +92,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("one/three.html"))
 		})
@@ -102,7 +102,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("test/UPPER/MiXeD.html"))
 		})
@@ -112,7 +112,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("test/!T@e£s$t/U^R*L(){}.html"))
 		})
@@ -122,7 +122,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("test/one-two--three---.html"))
 		})
@@ -132,7 +132,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal(`test/如何在香港申請英國簽證.html`))
 		})
@@ -142,7 +142,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("this/url/has/a/trailing/slash/index.html"))
 		})
@@ -152,7 +152,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("index.html"))
 		})
@@ -161,7 +161,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery := amqp.Delivery{Body: []byte(testURL + "?foo=bar")}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
 		})
@@ -170,7 +170,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery := amqp.Delivery{Body: []byte(testURL + "#foo")}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &http_crawler.CrawlerResponse{Body: html, ContentType: HTML}
 
 			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
 		})
@@ -180,7 +180,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: ATOM}
+			item.Response = &http_crawler.CrawlerResponse{Body: []byte(""), ContentType: ATOM}
 
 			Expect(item.RelativeFilePath()).To(Equal("things.atom"))
 		})
@@ -190,7 +190,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			delivery = amqp.Delivery{Body: []byte(testURL)}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: JSON}
+			item.Response = &http_crawler.CrawlerResponse{Body: []byte(""), ContentType: JSON}
 
 			Expect(item.RelativeFilePath()).To(Equal("api.json"))
 		})
@@ -296,7 +296,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("removes paths that are blacklisted", func() {
 			item := NewCrawlerMessageItem(delivery, rootURL, []string{"/trade-tariff"})
-			item.Response = &CrawlerResponse{
+			item.Response = &http_crawler.CrawlerResponse{
 				Body: []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`),
 			}
 

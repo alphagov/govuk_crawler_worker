@@ -11,7 +11,7 @@ import (
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
-	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	. "github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	. "github.com/onsi/ginkgo"
@@ -119,11 +119,11 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("CrawlURL", func() {
-			var crawler *Crawler
+			var crawler *http_crawler.Crawler
 
 			BeforeEach(func() {
 				rootURL, _ = url.Parse("http://127.0.0.1")
-				crawler = NewCrawler(rootURL, "0.0.0", nil)
+				crawler = http_crawler.NewCrawler(rootURL, "0.0.0", nil)
 				Expect(crawler).ToNot(BeNil())
 			})
 
@@ -261,7 +261,7 @@ var _ = Describe("Workflow", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item.Response = &http_crawler.CrawlerResponse{
 					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
 					ContentType: HTML,
 				}
@@ -296,7 +296,7 @@ var _ = Describe("Workflow", func() {
 
 				rootURL, _ := url.Parse("https://www.gov.uk")
 				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item.Response = &http_crawler.CrawlerResponse{
 					Body:        body,
 					ContentType: JSON,
 				}
@@ -323,7 +323,7 @@ var _ = Describe("Workflow", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
 				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item.Response = &http_crawler.CrawlerResponse{
 					Body: []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
 				}
 
