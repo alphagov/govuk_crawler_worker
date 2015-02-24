@@ -10,10 +10,10 @@ import (
 	"path"
 	"time"
 
-	. "github.com/alphagov/govuk_crawler_worker"
-	. "github.com/alphagov/govuk_crawler_worker/http_crawler"
-	. "github.com/alphagov/govuk_crawler_worker/queue"
-	. "github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
+	"github.com/alphagov/govuk_crawler_worker"
+	"github.com/alphagov/govuk_crawler_worker/http_crawler"
+	"github.com/alphagov/govuk_crawler_worker/queue"
+	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -32,9 +32,9 @@ var _ = Describe("Workflow", func() {
 		var (
 			err             error
 			mirrorRoot      string
-			queueManager    *Manager
+			queueManager    *queue.Manager
 			queueManagerErr error
-			ttlHashSet      *TTLHashSet
+			ttlHashSet      *ttl_hash_set.TTLHashSet
 			ttlHashSetErr   error
 			rootURL         *url.URL
 		)
@@ -48,10 +48,10 @@ var _ = Describe("Workflow", func() {
 
 			rootURL, _ = url.Parse("https://www.gov.uk")
 
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
 
-			queueManager, queueManagerErr = NewManager(
+			queueManager, queueManagerErr = queue.NewManager(
 				amqpAddr,
 				exchangeName,
 				queueName)
@@ -92,20 +92,20 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := make(chan *CrawlerMessageItem, 1)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
 
 				err = queueManager.Publish("#", "text/plain", url)
 				Expect(err).To(BeNil())
 
 				for item := range deliveries {
-					outbound <- NewCrawlerMessageItem(item, rootURL, []string{})
+					outbound <- main.NewCrawlerMessageItem(item, rootURL, []string{})
 					item.Ack(false)
 					break
 				}
 
 				Expect(len(outbound)).To(Equal(1))
 
-				go AcknowledgeItem(outbound, ttlHashSet)
+				go main.AcknowledgeItem(outbound, ttlHashSet)
 
 				Eventually(outbound).Should(HaveLen(0))
 				Eventually(func() bool {
@@ -119,24 +119,24 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("CrawlURL", func() {
-			var crawler *Crawler
+			var crawler *http_crawler.Crawler
 
 			BeforeEach(func() {
 				rootURL, _ = url.Parse("http://127.0.0.1")
-				crawler = NewCrawler(rootURL, "0.0.0", nil)
+				crawler = http_crawler.NewCrawler(rootURL, "0.0.0", nil)
 				Expect(crawler).ToNot(BeNil())
 			})
 
 			It("crawls a URL and assigns the body", func() {
-				outbound := make(chan *CrawlerMessageItem, 1)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
 
 				body := `<a href="gov.uk">bar</a>`
 				server := testServer(http.StatusOK, body)
 
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
-				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				outbound <- main.NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
 
-				crawled := CrawlURL(ttlHashSet, outbound, crawler, 1, 1)
+				crawled := main.CrawlURL(ttlHashSet, outbound, crawler, 1, 1)
 
 				Expect((<-crawled).Response.Body[0:24]).To(Equal([]byte(body)))
 
@@ -151,7 +151,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := main.ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -160,7 +160,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Eventually(crawlChan).Should(HaveLen(1))
 
-				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				crawled := main.CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
 				Eventually(crawlChan).Should(HaveLen(0))
 
 				Eventually(func() (int, error) {
@@ -184,7 +184,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := main.ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -193,12 +193,12 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Eventually(crawlChan).Should(HaveLen(1))
 
-				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				crawled := main.CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
 				Eventually(crawlChan).Should(HaveLen(0))
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(AlreadyCrawled))
+				}).Should(Equal(main.AlreadyCrawled))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
@@ -217,7 +217,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := main.ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -226,12 +226,12 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Eventually(crawlChan).Should(HaveLen(1))
 
-				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
+				crawled := main.CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
 				Eventually(crawlChan).Should(HaveLen(0))
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(AlreadyCrawled))
+				}).Should(Equal(main.AlreadyCrawled))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
@@ -244,14 +244,14 @@ var _ = Describe("Workflow", func() {
 			})
 
 			It("expects the number of goroutines to run to be a positive integer", func() {
-				outbound := make(chan *CrawlerMessageItem, 1)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
 
 				Expect(func() {
-					CrawlURL(ttlHashSet, outbound, crawler, 0, 1)
+					main.CrawlURL(ttlHashSet, outbound, crawler, 0, 1)
 				}).To(Panic())
 
 				Expect(func() {
-					CrawlURL(ttlHashSet, outbound, crawler, -1, 1)
+					main.CrawlURL(ttlHashSet, outbound, crawler, -1, 1)
 				}).To(Panic())
 			})
 		})
@@ -260,14 +260,14 @@ var _ = Describe("Workflow", func() {
 			It("wrote the item to disk", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
-				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item := main.NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				item.Response = &http_crawler.CrawlerResponse{
 					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
-					ContentType: HTML,
+					ContentType: http_crawler.HTML,
 				}
 
-				outbound := make(chan *CrawlerMessageItem, 1)
-				extract := WriteItemToDisk(mirrorRoot, outbound)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
+				extract := main.WriteItemToDisk(mirrorRoot, outbound)
 
 				Expect(len(extract)).To(Equal(0))
 
@@ -295,14 +295,14 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 
 				rootURL, _ := url.Parse("https://www.gov.uk")
-				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item := main.NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
+				item.Response = &http_crawler.CrawlerResponse{
 					Body:        body,
-					ContentType: JSON,
+					ContentType: http_crawler.JSON,
 				}
 
-				outbound := make(chan *CrawlerMessageItem, 1)
-				extract := WriteItemToDisk(mirrorRoot, outbound)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
+				extract := main.WriteItemToDisk(mirrorRoot, outbound)
 				Expect(len(extract)).To(Equal(0))
 
 				outbound <- item
@@ -322,13 +322,13 @@ var _ = Describe("Workflow", func() {
 			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
 				url := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(url)}
-				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
-				item.Response = &CrawlerResponse{
+				item := main.NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				item.Response = &http_crawler.CrawlerResponse{
 					Body: []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
 				}
 
-				outbound := make(chan *CrawlerMessageItem, 1)
-				publish, acknowledge := ExtractURLs(outbound)
+				outbound := make(chan *main.CrawlerMessageItem, 1)
+				publish, acknowledge := main.ExtractURLs(outbound)
 
 				Expect(len(publish)).To(Equal(0))
 				Expect(len(acknowledge)).To(Equal(0))
@@ -362,7 +362,7 @@ var _ = Describe("Workflow", func() {
 						item.Ack(false)
 					}
 				}()
-				go PublishURLs(ttlHashSet, queueManager, publish)
+				go main.PublishURLs(ttlHashSet, queueManager, publish)
 
 				publish <- url
 				Expect(len(publish)).To(Equal(1))
@@ -391,7 +391,7 @@ var _ = Describe("Workflow", func() {
 						item.Ack(false)
 					}
 				}()
-				go PublishURLs(ttlHashSet, queueManager, publish)
+				go main.PublishURLs(ttlHashSet, queueManager, publish)
 
 				publish <- url
 
@@ -408,7 +408,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				outbound := main.ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
 				Expect(len(outbound)).To(Equal(0))
 
 				url := "https://www.gov.uk/bar"
@@ -444,7 +444,7 @@ var _ = Describe("Workflow", func() {
 				}()
 				Eventually(deliveriesBuffer).Should(HaveLen(1))
 
-				ReadFromQueue(deliveriesBuffer, rootURL, ttlHashSet, []string{"/blacklisted"}, 1)
+				main.ReadFromQueue(deliveriesBuffer, rootURL, ttlHashSet, []string{"/blacklisted"}, 1)
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)

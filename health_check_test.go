@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/alphagov/govuk_crawler_worker"
+	"github.com/alphagov/govuk_crawler_worker"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,8 +54,8 @@ var _ = Describe("HealthCheck", func() {
 		queueManager.Close()
 		ttlHashSet.Close()
 
-		healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-		Expect(healthCheck.Status()).To(Equal(&Status{
+		healthCheck := main.NewHealthCheck(queueManager, ttlHashSet)
+		Expect(healthCheck.Status()).To(Equal(&main.Status{
 			AMQP:  false,
 			Redis: false,
 		}))
@@ -89,15 +89,15 @@ var _ = Describe("HealthCheck", func() {
 		})
 
 		It("should return a status struct showing the status of RabbitMQ and Redis", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			Expect(healthCheck.Status()).To(Equal(&Status{
+			healthCheck := main.NewHealthCheck(queueManager, ttlHashSet)
+			Expect(healthCheck.Status()).To(Equal(&main.Status{
 				AMQP:  true,
 				Redis: true,
 			}))
 		})
 
 		It("provides an HTTP handler for marshalling the response to an HTTP server", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
+			healthCheck := main.NewHealthCheck(queueManager, ttlHashSet)
 			handler := healthCheck.HTTPHandler()
 
 			w := httptest.NewRecorder()
@@ -127,10 +127,10 @@ var _ = Describe("HealthCheck", func() {
 		})
 
 		It("should show AMQP as down if the Producer is down", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
+			healthCheck := main.NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Producer.Close()
 
-			Expect(healthCheck.Status()).To(Equal(&Status{
+			Expect(healthCheck.Status()).To(Equal(&main.Status{
 				AMQP:  false,
 				Redis: true,
 			}))
@@ -147,10 +147,10 @@ var _ = Describe("HealthCheck", func() {
 		})
 
 		It("should show AMQP as down if the Consumer is down", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
+			healthCheck := main.NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Consumer.Close()
 
-			Expect(healthCheck.Status()).To(Equal(&Status{
+			Expect(healthCheck.Status()).To(Equal(&main.Status{
 				AMQP:  false,
 				Redis: true,
 			}))
