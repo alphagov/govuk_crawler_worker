@@ -27,14 +27,21 @@ var _ = Describe("Crawl", func() {
 	var crawler *Crawler
 
 	BeforeEach(func() {
-		rootURL, _ := url.Parse("http://127.0.0.1")
+		rootURL := &url.URL{
+			Scheme: "http",
+			Host:   "127.0.0.1",
+		}
 		crawler = NewCrawler(rootURL, "0.0.0", nil)
 		Expect(crawler).ToNot(BeNil())
 	})
 
 	Describe("NewCrawler()", func() {
 		It("provides a new crawler that accepts the provided host", func() {
-			rootURL, _ := url.Parse("https://www.gov.uk/")
+			rootURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+			}
+
 			GOVUKCrawler := NewCrawler(rootURL, "0.0.0", nil)
 			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
 		})
@@ -64,7 +71,11 @@ var _ = Describe("Crawl", func() {
 			basicAuthTestServer := httptest.NewServer(http.HandlerFunc(basic("username", "password")))
 			defer basicAuthTestServer.Close()
 
-			rootURL, _ := url.Parse("http://127.0.0.1")
+			rootURL := &url.URL{
+				Scheme: "http",
+				Host:   "127.0.0.1",
+			}
+
 			basicAuthCrawler := NewCrawler(rootURL, "0.0.0", &BasicAuth{"username", "password"})
 
 			testURL, _ := url.Parse(basicAuthTestServer.URL)
@@ -130,7 +141,12 @@ var _ = Describe("Crawl", func() {
 		})
 
 		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
-			testURL, _ := url.Parse("http://www.google.com/foo")
+			testURL := &url.URL{
+				Scheme: "http",
+				Host:   "www.google.com",
+				Path:   "foo",
+			}
+
 			response, err := crawler.Crawl(testURL)
 
 			Expect(err).To(Equal(ErrCannotCrawlURL))
