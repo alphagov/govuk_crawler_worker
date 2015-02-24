@@ -16,13 +16,15 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var mirrorRoot string
-	var delivery amqp.Delivery
-	var err error
-	var html []byte
-	var item *CrawlerMessageItem
-	var rootURL *url.URL
-	var testURL *url.URL
+	var (
+		mirrorRoot string
+		delivery   amqp.Delivery
+		err        error
+		html       []byte
+		item       *CrawlerMessageItem
+		rootURL    *url.URL
+		testURL    *url.URL
+	)
 
 	BeforeEach(func() {
 		mirrorRoot = os.Getenv("MIRROR_ROOT")
