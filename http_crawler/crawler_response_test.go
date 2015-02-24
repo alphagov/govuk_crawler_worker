@@ -35,7 +35,6 @@ var _ = Describe("CrawlerResponse", func() {
 
 	Describe("ContentType", func() {
 		It("returns the error if we can't parse the content type", func() {
-			response := &CrawlerResponse{}
 			mime, err := response.ParseContentType()
 
 			Expect(mime).To(BeEmpty())
