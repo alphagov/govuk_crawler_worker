@@ -20,7 +20,7 @@ const AlreadyCrawled int = -1
 
 func ReadFromQueue(
 	inboundChannel <-chan amqp.Delivery,
-	rootURL *url.URL,
+	rootURLs []*url.URL,
 	ttlHashSet *ttl_hash_set.TTLHashSet,
 	blacklistPaths []string,
 	crawlerThreads int,
@@ -35,7 +35,7 @@ func ReadFromQueue(
 	) {
 		for item := range inbound {
 			start := time.Now()
-			message := NewCrawlerMessageItem(item, rootURL, blacklistPaths)
+			message := NewCrawlerMessageItem(item, rootURLs, blacklistPaths)
 
 			if message.IsBlacklisted() {
 				item.Ack(false)
@@ -190,8 +190,8 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			}
 
 			filePath := filepath.Join(basePath, relativeFilePath)
-			basePath := filepath.Dir(filePath)
-			err = os.MkdirAll(basePath, 0755)
+			dirPath := filepath.Dir(filePath)
+			err = os.MkdirAll(dirPath, 0755)
 
 			if err != nil {
 				item.Reject(false)

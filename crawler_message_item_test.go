@@ -17,12 +17,13 @@ import (
 
 var _ = Describe("CrawlerMessageItem", func() {
 	var (
-		mirrorRoot       string
-		delivery         amqp.Delivery
-		err              error
-		html             []byte
-		item             *CrawlerMessageItem
-		rootURL, testURL *url.URL
+		mirrorRoot                string
+		delivery                  amqp.Delivery
+		err                       error
+		html                      []byte
+		item                      *CrawlerMessageItem
+		rootURLs                  []*url.URL
+		testURL, urlA, urlB, urlC *url.URL
 	)
 
 	BeforeEach(func() {
@@ -38,21 +39,36 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Path:   "/government/organisations",
 		}
 
-		rootURL = &url.URL{
+		delivery = amqp.Delivery{Body: []byte(testURL.String())}
+		item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+
+		urlA = &url.URL{
 			Scheme: "https",
 			Host:   "www.gov.uk",
 			Path:   "/",
 		}
-
-		delivery = amqp.Delivery{Body: []byte(testURL.String())}
-		item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+		urlB = &url.URL{
+			Scheme: "https",
+			Host:   "assets.digital.cabinet-office.gov.uk",
+			Path:   "/",
+		}
+		urlC = &url.URL{
+			Scheme: "https",
+			Host:   "example.com",
+			Path:   "/",
+		}
+		rootURLs = []*url.URL{urlA, urlB, urlC}
 
 		html = []byte(`<html>
 <head><title>test</title</head>
 <body><h1>TEST</h1></body>
 </html>
 `)
-		item.Response = &CrawlerResponse{Body: html}
+		item.Response = &CrawlerResponse{
+			Body:        html,
+			ContentType: HTML,
+			URL:         urlA,
+		}
 	})
 
 	AfterEach(func() {
@@ -60,7 +76,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("generates a CrawlerMessageItem object", func() {
-		Expect(NewCrawlerMessageItem(delivery, rootURL, []string{})).ToNot(BeNil())
+		Expect(NewCrawlerMessageItem(delivery, rootURLs, []string{})).ToNot(BeNil())
+	})
+
+	It("can get the Response.Request.URL of the crawled URL", func() {
+		Expect(item.Response.URL).To(Equal(urlA))
 	})
 
 	Describe("getting and setting the Response.Body", func() {
@@ -69,7 +89,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("can set the Response.Body of the crawled URL", func() {
-			item := NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item := NewCrawlerMessageItem(delivery, rootURLs, []string{})
 			item.Response = &CrawlerResponse{Body: []byte("foo")}
 
 			Expect(item.Response.Body).To(Equal([]byte("foo")))
@@ -78,7 +98,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 	It("detects when a URL is blacklisted", func() {
 		delivery = amqp.Delivery{Body: []byte("https://www.example.com/blacklisted")}
-		item := NewCrawlerMessageItem(delivery, rootURL, []string{"/blacklisted"})
+		item := NewCrawlerMessageItem(delivery, rootURLs, []string{"/blacklisted"})
 		Expect(item.IsBlacklisted()).To(BeTrue())
 	})
 
@@ -97,8 +117,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("example.com/test/url.html"))
 		})
@@ -107,8 +130,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/../../one/./two/../three"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/one/three.html"))
 		})
@@ -117,8 +143,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/test/UPPER/MiXeD"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/UPPER/MiXeD.html"))
 		})
@@ -127,8 +156,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/test/!T@e£s$t/U^R*L(){}"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/!T@e£s$t/U^R*L(){}.html"))
 		})
@@ -137,8 +169,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/test/one-two--three---"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/one-two--three---.html"))
 		})
@@ -147,8 +182,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/test/如何在香港申請英國簽證"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/如何在香港申請英國簽證.html"))
 		})
@@ -157,8 +195,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/this/url/has/a/trailing/slash/"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/this/url/has/a/trailing/slash/index.html"))
 		})
@@ -167,17 +208,23 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/index.html"))
 		})
 
 		It("omits URL query parameters", func() {
 			delivery := amqp.Delivery{Body: []byte(testURL.String() + "?foo=bar")}
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
 
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/government/organisations.html"))
 		})
@@ -185,8 +232,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("omits URL fragments", func() {
 			delivery := amqp.Delivery{Body: []byte(testURL.String() + "#foo")}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
-			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
+			item.Response = &CrawlerResponse{
+				Body:        []byte("foo"),
+				ContentType: HTML,
+			}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/government/organisations.html"))
 		})
@@ -195,7 +245,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/things.atom"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: ATOM}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/things.atom"))
@@ -205,7 +255,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			testURL.Path = "/api.json"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
-			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
+			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: JSON}
 
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/api.json"))
@@ -213,6 +263,20 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	Describe("ExtractURLs", func() {
+		It("should extract all URLs that match rootURLs in a given HTML document", func() {
+			item.Response.Body = []byte(`
+                          <img src="https://assets.digital.cabinet-office.gov.uk/image.png">
+                          <a href="https://www.gov.uk/foo">Test</a>
+                          <script src="https://example.com/jq.js"></script>
+                          <script src="https://google.com/another.js"></script>
+                        `)
+
+			urls, err := item.ExtractURLs()
+
+			Expect(err).To(BeNil())
+			Expect(urls).To(HaveLen(3))
+		})
+
 		It("should return an empty array if it can't find any matching URLs", func() {
 			item.Response.Body = []byte("")
 			urls, err := item.ExtractURLs()
@@ -352,9 +416,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("removes paths that are blacklisted", func() {
-			item := NewCrawlerMessageItem(delivery, rootURL, []string{"/trade-tariff"})
+			item := NewCrawlerMessageItem(delivery, rootURLs, []string{"/trade-tariff"})
 			item.Response = &CrawlerResponse{
-				Body: []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`),
+				Body:        []byte(`<div><a href="/foo/bar">a</a><a href="/trade-tariff">b</a></div>`),
+				ContentType: HTML,
+				URL:         urlA,
 			}
 
 			urls, err := item.ExtractURLs()

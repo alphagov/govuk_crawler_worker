@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URLs")
 	ErrNotFound        = errors.New("404 Not Found")
 	ErrRedirect        = errors.New("HTTP redirect encountered")
 	ErrRetryRequest5XX = errors.New("Retry request: 5XX HTTP Response returned")
@@ -31,15 +31,15 @@ type BasicAuth struct {
 }
 
 type Crawler struct {
-	RootURL *url.URL
+	RootURLs []*url.URL
 
 	basicAuth *BasicAuth
 	version   string
 }
 
-func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
+func NewCrawler(rootURLs []*url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
 	return &Crawler{
-		RootURL: rootURL,
+		RootURLs: rootURLs,
 
 		basicAuth: basicAuth,
 		version:   versionNumber,
@@ -47,7 +47,7 @@ func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *C
 }
 
 func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
-	if !strings.HasPrefix(crawlURL.Host, c.RootURL.Host) {
+	if !IsAllowedHost(crawlURL.Host, c.RootURLs) {
 		return nil, ErrCannotCrawlURL
 	}
 
@@ -91,6 +91,7 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	response := &CrawlerResponse{
 		Body:        body,
 		ContentType: resp.Header.Get("Content-Type"),
+		URL:         resp.Request.URL,
 	}
 
 	return response, nil

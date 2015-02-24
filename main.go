@@ -30,7 +30,8 @@ var (
 	queueName         = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
 	redisAddr         = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
-	rootURLString     = util.GetEnvDefault("ROOT_URL", "https://www.gov.uk/")
+	rootURLs          []*url.URL
+	rootURLString     = util.GetEnvDefault("ROOT_URLS", "https://www.gov.uk/")
 	ttlExpireString   = util.GetEnvDefault("TTL_EXPIRE_TIME", "12h")
 	mirrorRoot        = os.Getenv("MIRROR_ROOT")
 )
@@ -77,9 +78,16 @@ func main() {
 		log.Fatalln("MIRROR_ROOT environment variable not set")
 	}
 
-	rootURL, err := url.Parse(rootURLString)
-	if err != nil {
-		log.Fatalln("Couldn't parse ROOT_URL:", rootURLString)
+	rootURLStrings := strings.Split(rootURLString, ",")
+
+	for _, u := range rootURLStrings {
+		rootURL, err := url.Parse(u)
+
+		if err != nil {
+			log.Fatalln("Couldn't parse ROOT_URL:", u)
+		}
+
+		rootURLs = append(rootURLs, rootURL)
 	}
 
 	ttlExpireTime, err := time.ParseDuration(ttlExpireString)
@@ -103,10 +111,10 @@ func main() {
 
 	var crawler *http_crawler.Crawler
 	if basicAuthUsername != "" && basicAuthPassword != "" {
-		crawler = http_crawler.NewCrawler(rootURL, versionNumber,
+		crawler = http_crawler.NewCrawler(rootURLs, versionNumber,
 			&http_crawler.BasicAuth{basicAuthUsername, basicAuthPassword})
 	} else {
-		crawler = http_crawler.NewCrawler(rootURL, versionNumber, nil)
+		crawler = http_crawler.NewCrawler(rootURLs, versionNumber, nil)
 	}
 	log.Infoln("Generated crawler:", crawler)
 
@@ -133,7 +141,7 @@ func main() {
 		maxCrawlRetriesInt = 4
 	}
 
-	crawlChan = ReadFromQueue(deliveries, rootURL, ttlHashSet, splitPaths(blacklistPaths), crawlerThreadsInt)
+	crawlChan = ReadFromQueue(deliveries, rootURLs, ttlHashSet, splitPaths(blacklistPaths), crawlerThreadsInt)
 	persistChan = CrawlURL(ttlHashSet, crawlChan, crawler, crawlerThreadsInt, maxCrawlRetriesInt)
 	parseChan = WriteItemToDisk(mirrorRoot, persistChan)
 	publishChan, acknowledgeChan = ExtractURLs(parseChan)

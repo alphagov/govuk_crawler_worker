@@ -35,7 +35,10 @@ var _ = Describe("Workflow", func() {
 			mirrorRoot   string
 			queueManager *Manager
 			ttlHashSet   *TTLHashSet
-			rootURL      *url.URL
+			rootURLs     []*url.URL
+			testURL      *url.URL
+			urlA         *url.URL
+			urlB         *url.URL
 		)
 
 		BeforeEach(func() {
@@ -45,7 +48,19 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 			}
 
-			rootURL = &url.URL{
+			urlA = &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/",
+			}
+			urlB = &url.URL{
+				Scheme: "https",
+				Host:   "assets.digital.cabinet-office.gov.uk",
+				Path:   "/",
+			}
+			rootURLs = []*url.URL{urlA, urlB}
+
+			testURL = &url.URL{
 				Scheme: "https",
 				Host:   "www.gov.uk",
 			}
@@ -100,7 +115,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 
 				for item := range deliveries {
-					outbound <- NewCrawlerMessageItem(item, rootURL, []string{})
+					outbound <- NewCrawlerMessageItem(item, rootURLs, []string{})
 					item.Ack(false)
 					break
 				}
@@ -122,14 +137,13 @@ var _ = Describe("Workflow", func() {
 
 		Describe("CrawlURL", func() {
 			var crawler *Crawler
+			var rootURLs []*url.URL
 
 			BeforeEach(func() {
-				rootURL := &url.URL{
-					Scheme: "http",
-					Host:   "127.0.0.1",
-				}
-
-				crawler = NewCrawler(rootURL, "0.0.0", nil)
+				urlA, _ := url.Parse("http://127.0.0.1")
+				urlB, _ := url.Parse("http://127.0.0.2")
+				rootURLs = []*url.URL{urlA, urlB}
+				crawler = NewCrawler(rootURLs, "0.0.0", nil)
 				Expect(crawler).ToNot(BeNil())
 			})
 
@@ -140,7 +154,7 @@ var _ = Describe("Workflow", func() {
 				server := testServer(http.StatusOK, body)
 
 				deliveryItem := &amqp.Delivery{Body: []byte(server.URL)}
-				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				outbound <- NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
 
 				crawled := CrawlURL(ttlHashSet, outbound, crawler, 1, 1)
 
@@ -157,7 +171,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -190,7 +204,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -223,7 +237,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				crawlChan := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
 				maxRetries := 4
@@ -266,10 +280,11 @@ var _ = Describe("Workflow", func() {
 			It("wrote the item to disk", func() {
 				u := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(u)}
-				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				item := NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
 				item.Response = &CrawlerResponse{
 					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
 					ContentType: HTML,
+					URL:         testURL,
 				}
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -300,15 +315,11 @@ var _ = Describe("Workflow", func() {
 				err = queueManager.Publish("#", "text/plain", "https://www.gov.uk/extract-some-urls.json")
 				Expect(err).To(BeNil())
 
-				rootURL := &url.URL{
-					Scheme: "https",
-					Host:   "www.gov.uk",
-				}
-
-				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
+				item := NewCrawlerMessageItem((<-deliveries), rootURLs, []string{})
 				item.Response = &CrawlerResponse{
 					Body:        body,
 					ContentType: JSON,
+					URL:         testURL,
 				}
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -332,9 +343,10 @@ var _ = Describe("Workflow", func() {
 			It("extracts URLs from the HTML body and adds them to a new channel; acknowledging item", func() {
 				u := "https://www.gov.uk/extract-some-urls"
 				deliveryItem := &amqp.Delivery{Body: []byte(u)}
-				item := NewCrawlerMessageItem(*deliveryItem, rootURL, []string{})
+				item := NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
 				item.Response = &CrawlerResponse{
 					Body: []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					URL:  testURL,
 				}
 
 				outbound := make(chan *CrawlerMessageItem, 1)
@@ -375,7 +387,7 @@ var _ = Describe("Workflow", func() {
 				go PublishURLs(ttlHashSet, queueManager, publish)
 
 				publish <- u
-				Expect(len(publish)).To(Equal(1))
+				Eventually(publish).Should(HaveLen(1))
 
 				Eventually(publish).Should(HaveLen(0))
 				Eventually(outbound).Should(HaveLen(0))
@@ -418,7 +430,7 @@ var _ = Describe("Workflow", func() {
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
-				outbound := ReadFromQueue(deliveries, rootURL, ttlHashSet, []string{}, 1)
+				outbound := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(outbound)).To(Equal(0))
 
 				u := "https://www.gov.uk/bar"
@@ -454,7 +466,7 @@ var _ = Describe("Workflow", func() {
 				}()
 				Eventually(deliveriesBuffer).Should(HaveLen(1))
 
-				ReadFromQueue(deliveriesBuffer, rootURL, ttlHashSet, []string{"/blacklisted"}, 1)
+				ReadFromQueue(deliveriesBuffer, rootURLs, ttlHashSet, []string{"/blacklisted"}, 1)
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)

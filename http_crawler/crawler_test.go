@@ -25,6 +25,7 @@ func testServer(status int, body string) *httptest.Server {
 
 var _ = Describe("Crawl", func() {
 	var crawler *Crawler
+	var rootURLs []*url.URL
 	var urlA, urlB *url.URL
 
 	BeforeEach(func() {
@@ -44,16 +45,6 @@ var _ = Describe("Crawl", func() {
 	})
 
 	Describe("NewCrawler()", func() {
-		It("provides a new crawler that accepts the provided host", func() {
-			rootURL := &url.URL{
-				Scheme: "https",
-				Host:   "www.gov.uk",
-			}
-
-			GOVUKCrawler := NewCrawler(rootURL, "0.0.0", nil)
-			Expect(GOVUKCrawler.RootURL.Host).To(Equal("www.gov.uk"))
-		})
-
 		It("can accept username and password for HTTP Basic Auth", func() {
 			// Returns a HandlerFunc that authenticates via Basic
 			// Auth. Writes a http.StatusUnauthorized if
@@ -79,12 +70,7 @@ var _ = Describe("Crawl", func() {
 			basicAuthTestServer := httptest.NewServer(http.HandlerFunc(basic("username", "password")))
 			defer basicAuthTestServer.Close()
 
-			rootURL := &url.URL{
-				Scheme: "http",
-				Host:   "127.0.0.1",
-			}
-
-			basicAuthCrawler := NewCrawler(rootURL, "0.0.0", &BasicAuth{"username", "password"})
+			basicAuthCrawler := NewCrawler([]*url.URL{urlA}, "0.0.0", &BasicAuth{"username", "password"})
 
 			testURL, _ := url.Parse(basicAuthTestServer.URL)
 			response, err := basicAuthCrawler.Crawl(testURL)
@@ -148,13 +134,8 @@ var _ = Describe("Crawl", func() {
 			Expect(strings.TrimSpace(string(response.Body))).To(Equal("Hello world"))
 		})
 
-		It("doesn't allow crawling a URL that doesn't match the root URL", func() {
-			testURL := &url.URL{
-				Scheme: "http",
-				Host:   "www.google.com",
-				Path:   "foo",
-			}
-
+		It("returns an error if URL host is not in rootURLs", func() {
+			testURL, _ := url.Parse("http://www.google.com/foo")
 			response, err := crawler.Crawl(testURL)
 
 			Expect(err).To(Equal(ErrCannotCrawlURL))
