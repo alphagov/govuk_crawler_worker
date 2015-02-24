@@ -75,11 +75,11 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	switch {
 	case resp.StatusCode == 429:
 		return nil, ErrRetryRequest429
-	case contains(Retry5XXStatusCodes(), resp.StatusCode):
+	case containsInt(Retry5XXStatusCodes(), resp.StatusCode):
 		return nil, ErrRetryRequest5XX
 	case resp.StatusCode == http.StatusNotFound:
 		return nil, ErrNotFound
-	case contains(redirectStatusCodes, resp.StatusCode):
+	case containsInt(redirectStatusCodes, resp.StatusCode):
 		return nil, ErrRedirect
 	}
 
@@ -111,7 +111,7 @@ func Retry5XXStatusCodes() []int {
 	return statusCodes
 }
 
-func contains(haystack []int, needle int) bool {
+func containsInt(haystack []int, needle int) bool {
 	for _, hay := range haystack {
 		if hay == needle {
 			return true
