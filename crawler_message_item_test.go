@@ -143,13 +143,13 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves non-latin chars and not URL encode them", func() {
-			testURL.Path = `/test/如何在香港申請英國簽證`
+			testURL.Path = "/test/如何在香港申請英國簽證"
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal(`test/如何在香港申請英國簽證.html`))
+			Expect(item.RelativeFilePath()).To(Equal("test/如何在香港申請英國簽證.html"))
 		})
 
 		It("adds an index.html suffix when URL references a directory", func() {
