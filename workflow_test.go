@@ -30,13 +30,12 @@ var _ = Describe("Workflow", func() {
 		prefix := "govuk_mirror_crawler_workflow_test"
 
 		var (
-			err             error
-			mirrorRoot      string
-			queueManager    *Manager
-			queueManagerErr error
-			ttlHashSet      *TTLHashSet
-			ttlHashSetErr   error
-			rootURL         *url.URL
+			err, queueManagerErr, ttlHashSetErr error
+
+			mirrorRoot   string
+			queueManager *Manager
+			ttlHashSet   *TTLHashSet
+			rootURL      *url.URL
 		)
 
 		BeforeEach(func() {

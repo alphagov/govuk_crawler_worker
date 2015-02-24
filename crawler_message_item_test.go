@@ -17,13 +17,12 @@ import (
 
 var _ = Describe("CrawlerMessageItem", func() {
 	var (
-		mirrorRoot string
-		delivery   amqp.Delivery
-		err        error
-		html       []byte
-		item       *CrawlerMessageItem
-		rootURL    *url.URL
-		testURL    *url.URL
+		mirrorRoot       string
+		delivery         amqp.Delivery
+		err              error
+		html             []byte
+		item             *CrawlerMessageItem
+		rootURL, testURL *url.URL
 	)
 
 	BeforeEach(func() {
