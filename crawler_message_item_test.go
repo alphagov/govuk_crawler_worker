@@ -16,12 +16,13 @@ import (
 )
 
 var _ = Describe("CrawlerMessageItem", func() {
-	var mirrorRoot, testURL, urlPath string
+	var mirrorRoot string
 	var delivery amqp.Delivery
 	var err error
 	var html []byte
 	var item *CrawlerMessageItem
 	var rootURL *url.URL
+	var testURL *url.URL
 
 	BeforeEach(func() {
 		mirrorRoot = os.Getenv("MIRROR_ROOT")
@@ -30,15 +31,19 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 		}
 
+		testURL = &url.URL{
+			Scheme: "https",
+			Host:   "www.gov.uk",
+			Path:   "/government/organisations",
+		}
+
 		rootURL = &url.URL{
 			Scheme: "https",
 			Host:   "www.gov.uk",
 			Path:   "/",
 		}
-		testURL = rootURL.String() + urlPath
-		urlPath = "/government/organisations"
 
-		delivery = amqp.Delivery{Body: []byte(testURL)}
+		delivery = amqp.Delivery{Body: []byte(testURL.String())}
 		item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 
 		html = []byte(`<html>
@@ -77,13 +82,19 @@ var _ = Describe("CrawlerMessageItem", func() {
 	})
 
 	It("returns its URL", func() {
-		Expect(item.URL()).To(Equal(testURL))
+		Expect(item.URL()).To(Equal(testURL.String()))
 	})
 
 	Describe("generating a sane filename", func() {
 		It("strips out the domain, protocol, auth and ports", func() {
-			testURL = "https://user:pass@example.com:8080/test/url"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL = &url.URL{
+				Scheme: "https",
+				User:   url.UserPassword("user", "pass"),
+				Host:   "example.com:8080",
+				Path:   "/test/url",
+			}
+
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -92,8 +103,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("strips preceeding path traversals and resolves the remaining path", func() {
-			testURL = rootURL.String() + "/../../one/./two/../three"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/../../one/./two/../three"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -102,8 +113,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves case sensitivity", func() {
-			testURL = rootURL.String() + "/test/UPPER/MiXeD"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/test/UPPER/MiXeD"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -112,8 +123,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves non-alphanumeric characters", func() {
-			testURL = rootURL.String() + "/test/!T@e£s$t/U^R*L(){}"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/test/!T@e£s$t/U^R*L(){}"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -122,8 +133,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves multiple dashes", func() {
-			testURL = rootURL.String() + "/test/one-two--three---"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/test/one-two--three---"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -132,8 +143,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("preserves non-latin chars and not URL encode them", func() {
-			testURL = rootURL.String() + `/test/如何在香港申請英國簽證`
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = `/test/如何在香港申請英國簽證`
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -142,8 +153,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("adds an index.html suffix when URL references a directory", func() {
-			testURL = rootURL.String() + "/this/url/has/a/trailing/slash/"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/this/url/has/a/trailing/slash/"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -152,8 +163,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
-			testURL = rootURL.String() + "/"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -162,7 +173,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("omits URL query parameters", func() {
-			delivery := amqp.Delivery{Body: []byte(testURL + "?foo=bar")}
+			delivery := amqp.Delivery{Body: []byte(testURL.String() + "?foo=bar")}
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -171,7 +182,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("omits URL fragments", func() {
-			delivery := amqp.Delivery{Body: []byte(testURL + "#foo")}
+			delivery := amqp.Delivery{Body: []byte(testURL.String() + "#foo")}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
@@ -180,8 +191,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("supports ATOM URLs", func() {
-			testURL = rootURL.String() + "/things.atom"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/things.atom"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: ATOM}
@@ -190,8 +201,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("supports JSON URLs", func() {
-			testURL = rootURL.String() + "/api.json"
-			delivery = amqp.Delivery{Body: []byte(testURL)}
+			testURL.Path = "/api.json"
+			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: JSON}
