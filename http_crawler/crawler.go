@@ -121,6 +121,23 @@ func contains(haystack []int, needle int) bool {
 	return false
 }
 
+func IsAllowedHost(needle string, allowedHosts []*url.URL) bool {
+	needleHost, err := HostOnly(needle)
+	if err != nil {
+		return false
+	}
+
+	for _, url := range allowedHosts {
+		h, _ := HostOnly(url.Host)
+
+		if h == needleHost {
+			return true
+		}
+	}
+
+	return false
+}
+
 // HostOnly parses out the host and removes the port (and separating colon) if
 // present.
 func HostOnly(hostport string) (string, error) {

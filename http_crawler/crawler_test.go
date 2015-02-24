@@ -25,13 +25,21 @@ func testServer(status int, body string) *httptest.Server {
 
 var _ = Describe("Crawl", func() {
 	var crawler *Crawler
+	var urlA, urlB *url.URL
 
 	BeforeEach(func() {
-		rootURL := &url.URL{
+		urlA = &url.URL{
 			Scheme: "http",
 			Host:   "127.0.0.1",
+			Path:   "/",
 		}
-		crawler = NewCrawler(rootURL, "0.0.0", nil)
+		urlB = &url.URL{
+			Scheme: "http",
+			Host:   "127.0.0.2",
+			Path:   "/",
+		}
+		rootURLs = []*url.URL{urlA, urlB}
+		crawler = NewCrawler(rootURLs, "0.0.0", nil)
 		Expect(crawler).ToNot(BeNil())
 	})
 
@@ -196,6 +204,18 @@ var _ = Describe("Crawl", func() {
 			Expect(len(statusCodes)).To(Equal(100))
 			Expect(statusCodes[0]).To(Equal(500))
 			Expect(statusCodes[99]).To(Equal(599))
+		})
+	})
+
+	Describe("IsAllowedHost", func() {
+		It("should return true if URL has allowed host", func() {
+			ret := IsAllowedHost(urlA.Host, []*url.URL{urlA})
+			Expect(ret).To(BeTrue())
+		})
+
+		It("should return false if URL host is not allowed", func() {
+			ret := IsAllowedHost(urlB.Host, []*url.URL{urlA})
+			Expect(ret).To(BeFalse())
 		})
 	})
 
