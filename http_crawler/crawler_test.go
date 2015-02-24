@@ -198,4 +198,20 @@ var _ = Describe("Crawl", func() {
 			Expect(statusCodes[99]).To(Equal(599))
 		})
 	})
+
+	Describe("HostOnly", func() {
+		It("should return only the host from a host:port tuplet", func() {
+			ret, err := HostOnly("foo:8443")
+
+			Expect(ret).To(Equal("foo"))
+			Expect(err).To(BeNil())
+		})
+
+		It("should return the hostname if no port is specified", func() {
+			ret, err := HostOnly("foo")
+
+			Expect(ret).To(Equal("foo"))
+			Expect(err).To(BeNil())
+		})
+	})
 })

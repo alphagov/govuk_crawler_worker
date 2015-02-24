@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -118,4 +119,20 @@ func contains(haystack []int, needle int) bool {
 	}
 
 	return false
+}
+
+// HostOnly parses out the host and removes the port (and separating colon) if
+// present.
+func HostOnly(hostport string) (string, error) {
+	host, _, err := net.SplitHostPort(hostport)
+
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "missing port in address") {
+			return hostport, nil
+		}
+
+		return "", err
+	}
+
+	return host, nil
 }
