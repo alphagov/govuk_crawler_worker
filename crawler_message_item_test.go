@@ -100,7 +100,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("test/url.html"))
+			Expect(item.RelativeFilePath()).To(Equal("example.com/test/url.html"))
 		})
 
 		It("strips preceeding path traversals and resolves the remaining path", func() {
@@ -110,7 +110,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("one/three.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/one/three.html"))
 		})
 
 		It("preserves case sensitivity", func() {
@@ -120,7 +120,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("test/UPPER/MiXeD.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/UPPER/MiXeD.html"))
 		})
 
 		It("preserves non-alphanumeric characters", func() {
@@ -130,7 +130,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("test/!T@e£s$t/U^R*L(){}.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/!T@e£s$t/U^R*L(){}.html"))
 		})
 
 		It("preserves multiple dashes", func() {
@@ -140,7 +140,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("test/one-two--three---.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/one-two--three---.html"))
 		})
 
 		It("preserves non-latin chars and not URL encode them", func() {
@@ -150,7 +150,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("test/如何在香港申請英國簽證.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/如何在香港申請英國簽證.html"))
 		})
 
 		It("adds an index.html suffix when URL references a directory", func() {
@@ -160,7 +160,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("this/url/has/a/trailing/slash/index.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/this/url/has/a/trailing/slash/index.html"))
 		})
 
 		It("adds an index.html suffix when URL has no path and no trailing slash", func() {
@@ -170,7 +170,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("index.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/index.html"))
 		})
 
 		It("omits URL query parameters", func() {
@@ -179,7 +179,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/government/organisations.html"))
 		})
 
 		It("omits URL fragments", func() {
@@ -188,7 +188,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: html, ContentType: HTML}
 
-			Expect(item.RelativeFilePath()).To(Equal("government/organisations.html"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/government/organisations.html"))
 		})
 
 		It("supports ATOM URLs", func() {
@@ -198,7 +198,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: ATOM}
 
-			Expect(item.RelativeFilePath()).To(Equal("things.atom"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/things.atom"))
 		})
 
 		It("supports JSON URLs", func() {
@@ -208,7 +208,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item = NewCrawlerMessageItem(delivery, rootURL, []string{})
 			item.Response = &CrawlerResponse{Body: []byte(""), ContentType: JSON}
 
-			Expect(item.RelativeFilePath()).To(Equal("api.json"))
+			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/api.json"))
 		})
 	})
 

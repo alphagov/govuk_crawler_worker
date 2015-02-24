@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -42,6 +43,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = urlParts.Path
+	host := strings.SplitN(urlParts.Host, ":", 2)[0]
 
 	contentType, err := c.Response.ParseContentType()
 	if err != nil {
@@ -64,6 +66,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = path.Clean(filePath)
+	filePath = filepath.Join(host, filePath)
 	filePath = strings.TrimPrefix(filePath, "/")
 
 	return filePath, nil
