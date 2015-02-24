@@ -30,7 +30,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(err).To(BeNil())
 		}
 
-		rootURL, _ = url.Parse("https://www.gov.uk")
+		rootURL = &url.URL{
+			Scheme: "https",
+			Host:   "www.gov.uk",
+			Path:   "/",
+		}
 		testURL = rootURL.String() + urlPath
 		urlPath = "/government/organisations"
 
@@ -208,7 +212,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("should extract all a[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/"></a></div>`)
 			urls, err := item.ExtractURLs()
-			expectedURL, _ := url.Parse("https://www.gov.uk/")
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/",
+			}
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedURL))
@@ -217,7 +225,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 		It("should extract all img[@src] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<div><img src="https://www.gov.uk/image.png" /></div>`)
 			urls, err := item.ExtractURLs()
-			expectedURL, _ := url.Parse("https://www.gov.uk/image.png")
+
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/image.png",
+			}
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedURL))
@@ -225,7 +238,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("should extract all link[@href] URLs from a given HTML document", func() {
 			item.Response.Body = []byte(`<head><link rel="icon" href="https://www.gov.uk/favicon.ico"></head>`)
-			expectedURL, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/favicon.ico",
+			}
+
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -236,7 +254,11 @@ var _ = Describe("CrawlerMessageItem", func() {
 			item.Response.Body = []byte(
 				`<head><script type="text/javascript" src="https://www.gov.uk/jq.js"></script></head>`)
 			urls, err := item.ExtractURLs()
-			expectedURL, _ := url.Parse("https://www.gov.uk/jq.js")
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/jq.js",
+			}
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedURL))
@@ -249,8 +271,16 @@ var _ = Describe("CrawlerMessageItem", func() {
 <link rel="icon" href="https://www.gov.uk/favicon.ico">
 </head>`)
 			urls, err := item.ExtractURLs()
-			expectedURL1, _ := url.Parse("https://www.gov.uk/jq.js")
-			expectedURL2, _ := url.Parse("https://www.gov.uk/favicon.ico")
+			expectedURL1 := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/jq.js",
+			}
+			expectedURL2 := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/favicon.ico",
+			}
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(ContainElement(expectedURL1))
@@ -267,8 +297,13 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("will unescape URLs", func() {
-			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/bar%20"></a></div>`)
-			expectedURL, _ := url.Parse("http://www.gov.uk/bar")
+			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/bar%20"></a></div>`)
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/bar",
+			}
+
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -277,7 +312,12 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 		It("should extract relative URLs", func() {
 			item.Response.Body = []byte(`<div><a href="/foo/bar">a</a><a href="mailto:c@d.com">b</a></div>`)
-			expectedURL, _ := url.Parse("https://www.gov.uk/foo/bar")
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/foo/bar",
+			}
+
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -286,8 +326,13 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("should remove the #fragment when extracting URLs", func() {
-			item.Response.Body = []byte(`<div><a href="http://www.gov.uk/#germany"></a></div>`)
-			expectedURL, _ := url.Parse("http://www.gov.uk/")
+			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/#germany"></a></div>`)
+			expectedURL := &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+				Path:   "/",
+			}
+
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())
@@ -307,7 +352,7 @@ var _ = Describe("CrawlerMessageItem", func() {
 		})
 
 		It("should only return unique URLs", func() {
-			item.Response.Body = []byte(`<a href="http://www.gov.uk/foo">a</a><a href="http://www.gov.uk/foo">b</a>`)
+			item.Response.Body = []byte(`<a href="https://www.gov.uk/foo">a</a><a href="https://www.gov.uk/foo">b</a>`)
 			urls, err := item.ExtractURLs()
 
 			Expect(err).To(BeNil())

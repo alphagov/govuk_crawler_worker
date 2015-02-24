@@ -46,7 +46,10 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 			}
 
-			rootURL, _ = url.Parse("https://www.gov.uk")
+			rootURL = &url.URL{
+				Scheme: "https",
+				Host:   "www.gov.uk",
+			}
 
 			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
 			Expect(ttlHashSetErr).To(BeNil())
@@ -122,7 +125,11 @@ var _ = Describe("Workflow", func() {
 			var crawler *Crawler
 
 			BeforeEach(func() {
-				rootURL, _ = url.Parse("http://127.0.0.1")
+				rootURL := &url.URL{
+					Scheme: "http",
+					Host:   "127.0.0.1",
+				}
+
 				crawler = NewCrawler(rootURL, "0.0.0", nil)
 				Expect(crawler).ToNot(BeNil())
 			})
@@ -294,7 +301,11 @@ var _ = Describe("Workflow", func() {
 				err = queueManager.Publish("#", "text/plain", "https://www.gov.uk/extract-some-urls.json")
 				Expect(err).To(BeNil())
 
-				rootURL, _ := url.Parse("https://www.gov.uk")
+				rootURL := &url.URL{
+					Scheme: "https",
+					Host:   "www.gov.uk",
+				}
+
 				item := NewCrawlerMessageItem((<-deliveries), rootURL, []string{})
 				item.Response = &CrawlerResponse{
 					Body:        body,
