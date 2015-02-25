@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -17,14 +18,14 @@ type CrawlerMessageItem struct {
 	amqp.Delivery
 	Response *http_crawler.CrawlerResponse
 
-	rootURL        *url.URL
+	rootURLs       []*url.URL
 	blacklistPaths []string
 }
 
-func NewCrawlerMessageItem(delivery amqp.Delivery, rootURL *url.URL, blacklistPaths []string) *CrawlerMessageItem {
+func NewCrawlerMessageItem(delivery amqp.Delivery, rootURLs []*url.URL, blacklistPaths []string) *CrawlerMessageItem {
 	return &CrawlerMessageItem{
 		Delivery:       delivery,
-		rootURL:        rootURL,
+		rootURLs:       rootURLs,
 		blacklistPaths: blacklistPaths,
 	}
 }
@@ -42,6 +43,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = urlParts.Path
+	host := strings.SplitN(urlParts.Host, ":", 2)[0]
 
 	contentType, err := c.Response.ParseContentType()
 	if err != nil {
@@ -64,6 +66,7 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	}
 
 	filePath = path.Clean(filePath)
+	filePath = filepath.Join(host, filePath)
 	filePath = strings.TrimPrefix(filePath, "/")
 
 	return filePath, nil
@@ -97,8 +100,12 @@ func (c *CrawlerMessageItem) ExtractURLs() ([]*url.URL, error) {
 			return extractedURLs, err
 		}
 
-		urls = convertURLsToAbsolute(c.rootURL, urls)
-		urls = filterURLsByHost(c.rootURL.Host, urls)
+		baseURL := &url.URL{
+			Scheme: c.Response.URL.Scheme,
+			Host:   c.Response.URL.Host,
+		}
+		urls = convertURLsToAbsolute(baseURL, urls)
+		urls = filterURLsByHost(c.rootURLs, urls)
 		urls = filterBlacklistedURLs(c.blacklistPaths, urls)
 		urls = removeFragmentFromURLs(urls)
 
@@ -134,9 +141,9 @@ func parseURLs(urls []string) ([]*url.URL, error) {
 	return parsedURLs, err
 }
 
-func convertURLsToAbsolute(rootURL *url.URL, urls []*url.URL) []*url.URL {
+func convertURLsToAbsolute(baseURL *url.URL, urls []*url.URL) []*url.URL {
 	return mapURLs(urls, func(url *url.URL) *url.URL {
-		return rootURL.ResolveReference(url)
+		return baseURL.ResolveReference(url)
 	})
 }
 
@@ -147,10 +154,14 @@ func removeFragmentFromURLs(urls []*url.URL) []*url.URL {
 	})
 }
 
-func filterURLsByHost(host string, urls []*url.URL) []*url.URL {
-	return filterURLs(urls, func(url *url.URL) bool {
-		return url.Host == host
-	})
+func filterURLsByHost(allowedHosts []*url.URL, urls []*url.URL) (ret []*url.URL) {
+	for _, allowed := range allowedHosts {
+		ret = append(ret, filterURLs(urls, func(url *url.URL) bool {
+			return url.Host == allowed.Host
+		})...)
+	}
+
+	return ret
 }
 
 func filterBlacklistedURLs(blacklistedPaths []string, urls []*url.URL) []*url.URL {

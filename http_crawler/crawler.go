@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,7 +13,7 @@ import (
 )
 
 var (
-	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URL")
+	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URLs")
 	ErrNotFound        = errors.New("404 Not Found")
 	ErrRedirect        = errors.New("HTTP redirect encountered")
 	ErrRetryRequest5XX = errors.New("Retry request: 5XX HTTP Response returned")
@@ -30,15 +31,15 @@ type BasicAuth struct {
 }
 
 type Crawler struct {
-	RootURL *url.URL
+	RootURLs []*url.URL
 
 	basicAuth *BasicAuth
 	version   string
 }
 
-func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
+func NewCrawler(rootURLs []*url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
 	return &Crawler{
-		RootURL: rootURL,
+		RootURLs: rootURLs,
 
 		basicAuth: basicAuth,
 		version:   versionNumber,
@@ -46,7 +47,7 @@ func NewCrawler(rootURL *url.URL, versionNumber string, basicAuth *BasicAuth) *C
 }
 
 func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
-	if !strings.HasPrefix(crawlURL.Host, c.RootURL.Host) {
+	if !IsAllowedHost(crawlURL.Host, c.RootURLs) {
 		return nil, ErrCannotCrawlURL
 	}
 
@@ -74,11 +75,11 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	switch {
 	case resp.StatusCode == 429:
 		return nil, ErrRetryRequest429
-	case contains(Retry5XXStatusCodes(), resp.StatusCode):
+	case containsInt(Retry5XXStatusCodes(), resp.StatusCode):
 		return nil, ErrRetryRequest5XX
 	case resp.StatusCode == http.StatusNotFound:
 		return nil, ErrNotFound
-	case contains(redirectStatusCodes, resp.StatusCode):
+	case containsInt(redirectStatusCodes, resp.StatusCode):
 		return nil, ErrRedirect
 	}
 
@@ -90,6 +91,7 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	response := &CrawlerResponse{
 		Body:        body,
 		ContentType: resp.Header.Get("Content-Type"),
+		URL:         resp.Request.URL,
 	}
 
 	return response, nil
@@ -110,7 +112,7 @@ func Retry5XXStatusCodes() []int {
 	return statusCodes
 }
 
-func contains(haystack []int, needle int) bool {
+func containsInt(haystack []int, needle int) bool {
 	for _, hay := range haystack {
 		if hay == needle {
 			return true
@@ -118,4 +120,37 @@ func contains(haystack []int, needle int) bool {
 	}
 
 	return false
+}
+
+func IsAllowedHost(needle string, allowedHosts []*url.URL) bool {
+	needleHost, err := HostOnly(needle)
+	if err != nil {
+		return false
+	}
+
+	for _, url := range allowedHosts {
+		h, _ := HostOnly(url.Host)
+
+		if h == needleHost {
+			return true
+		}
+	}
+
+	return false
+}
+
+// HostOnly parses out the host and removes the port (and separating colon) if
+// present.
+func HostOnly(hostport string) (string, error) {
+	host, _, err := net.SplitHostPort(hostport)
+
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "missing port in address") {
+			return hostport, nil
+		}
+
+		return "", err
+	}
+
+	return host, nil
 }

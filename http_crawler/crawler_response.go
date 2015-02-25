@@ -2,6 +2,7 @@ package http_crawler
 
 import (
 	"mime"
+	"net/url"
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 type CrawlerResponse struct {
 	Body        []byte
 	ContentType string
+	URL         *url.URL
 }
 
 func (c *CrawlerResponse) AcceptedContentType() bool {
