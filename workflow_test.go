@@ -185,12 +185,12 @@ var _ = Describe("Workflow", func() {
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(maxRetries))
+				}, time.Duration(1 + 5 * maxRetries) * time.Second).Should(Equal(maxRetries))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
 					return queueInfo.Messages, err
-				}).Should(Equal(0))
+				}, time.Duration(1 + 5 * maxRetries) * time.Second).Should(Equal(0))
 				Expect(len(crawled)).To(Equal(0))
 
 				server.Close()

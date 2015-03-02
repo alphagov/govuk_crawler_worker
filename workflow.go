@@ -119,13 +119,13 @@ func CrawlURL(
 					switch err {
 					case http_crawler.ErrRetryRequest5XX:
 						ttlHashSet.Incr(u.String())
-					case http_crawler.ErrRetryRequest429:
-						sleepTime := 5 * time.Second
-
-						// Back off from crawling for a few seconds.
-						log.Warningf("Sleeping for: %v. Received 429 HTTP status", sleepTime)
-						time.Sleep(sleepTime)
 					}
+
+                                        sleepTime := 5 * time.Second
+
+                                        // Back off from crawling for a few seconds.
+                                        log.Warningf("Sleeping for %v: %s", sleepTime, err)
+                                        time.Sleep(sleepTime)
 
 					item.Reject(true)
 					log.Warningln("Couldn't crawl (requeueing):", u.String(), err)
