@@ -195,7 +195,7 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 
 			if err != nil {
 				item.Reject(false)
-				log.Errorln("Couldn't created directories for item (rejecting):", filePath, err)
+				log.Errorln("Couldn't create directories for item (rejecting):", filePath, err)
 				continue
 			}
 
