@@ -12,13 +12,19 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus/hooks/airbrake"
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
+	airbrake "github.com/tobi/airbrake-go"
 )
 
 var (
+	airbrakeAPIKey      = os.Getenv("AIRBRAKE_API_KEY")
+	airbrakeEnvironment = os.Getenv("AIRBRAKE_ENV")
+	airbrakeEndpoint    = os.Getenv("AIRBRAKE_ENDPOINT")
+
 	amqpAddr          = util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
 	basicAuthPassword = util.GetEnvDefault("BASIC_AUTH_PASSWORD", "")
 	basicAuthUsername = util.GetEnvDefault("BASIC_AUTH_USERNAME", "")
@@ -59,6 +65,14 @@ func init() {
 
 	if *jsonFlag {
 		log.SetFormatter(new(log.JSONFormatter))
+	}
+
+	if airbrakeAPIKey != "" && airbrake.Endpoint != "" && airbrake.Environment != "" {
+		airbrake.ApiKey = airbrakeAPIKey
+		airbrake.Environment = airbrakeEnvironment
+		airbrake.Endpoint = airbrakeEndpoint
+		log.AddHook(&logrus_airbrake.AirbrakeHook{})
+		log.Infof("Logging exceptions to Airbrake endpoint %s", airbrake.Endpoint)
 	}
 
 	if *versionFlag {
