@@ -12,12 +12,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/logrus/hooks/airbrake"
 	"github.com/alphagov/govuk_crawler_worker/http_crawler"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
-	airbrake "github.com/tobi/airbrake-go"
+	"github.com/alphagov/logrus/hooks/airbrake2"
 )
 
 var (
@@ -67,12 +66,9 @@ func init() {
 		log.SetFormatter(new(log.JSONFormatter))
 	}
 
-	if airbrakeAPIKey != "" && airbrake.Endpoint != "" && airbrake.Environment != "" {
-		airbrake.ApiKey = airbrakeAPIKey
-		airbrake.Environment = airbrakeEnvironment
-		airbrake.Endpoint = airbrakeEndpoint
-		log.AddHook(&logrus_airbrake.AirbrakeHook{})
-		log.Infof("Logging exceptions to Airbrake endpoint %s", airbrake.Endpoint)
+	if airbrakeAPIKey != "" && airbrakeEndpoint != "" && airbrakeEnvironment != "" {
+		log.AddHook(airbrake.NewHook(airbrakeEndpoint, airbrakeAPIKey, airbrakeEnvironment))
+		log.Infof("Logging exceptions to Airbrake endpoint %s", airbrakeEndpoint)
 	}
 
 	if *versionFlag {

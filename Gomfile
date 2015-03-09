@@ -1,7 +1,7 @@
 gom 'code.google.com/p/cascadia', :commit => '5d796540e3cb93ea0556c897e6a3c7690f614d35'
 gom 'code.google.com/p/go.net/html/atom', :commit => 'eb3aa32581e642b8f84f8103124a98c82e252b4e'
 gom 'github.com/PuerkitoBio/goquery', :commit => 'ffa8a68c9f2882d21c77b65737c84e2f8690fa1f'
-gom 'github.com/Sirupsen/logrus', :commit => '965349de21e7b1e9e80b6ae02e093f1522516ef3'
+gom 'github.com/alphagov/logrus', :branch => 'add_aibrake_v2', :commit => '0fce55d0474b24634fc13d3bd2525ddc52b7ffa8'
 gom 'github.com/fzzy/radix/redis', :commit => 'acc2681fddcde19503e01e18abf7ca9b16fabcc7'
 gom 'github.com/onsi/ginkgo', :commit => '75d0cd9c7ee52e99b13e6ccfd9e58b4f92b7795e'
 gom 'github.com/onsi/gomega', :commit => '835b5e4242c715976b98ed6bc6ece1d9c7879f66'
