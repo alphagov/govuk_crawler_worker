@@ -67,7 +67,7 @@ func init() {
 		log.SetFormatter(new(log.JSONFormatter))
 	}
 
-	if airbrakeAPIKey != "" && airbrake.Endpoint != "" && airbrake.Environment != "" {
+	if airbrakeAPIKey != "" && airbrakeEndpoint != "" && airbrakeEnvironment != "" {
 		airbrake.ApiKey = airbrakeAPIKey
 		airbrake.Environment = airbrakeEnvironment
 		airbrake.Endpoint = airbrakeEndpoint
