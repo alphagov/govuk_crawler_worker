@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -75,12 +74,6 @@ func init() {
 		fmt.Println(versionNumber)
 		os.Exit(0)
 	}
-
-	if os.Getenv("GOMAXPROCS") == "" {
-		// Use all available cores if not otherwise specified
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
-	log.Infoln(fmt.Sprintf("using GOMAXPROCS value of %d", runtime.NumCPU()))
 }
 
 func main() {
