@@ -87,7 +87,7 @@ var _ = Describe("TTLHashSet", func() {
 			for time.Since(start) < reconnectTime {
 				exists, err := ttlHashSet.Exists(key)
 
-				Expect(err).To(MatchError("use of closed network connection"))
+				Expect(err.Error()).To(MatchRegexp("use of closed network connection$"))
 				Expect(exists).To(Equal(false))
 
 				time.Sleep(delayBetween)
