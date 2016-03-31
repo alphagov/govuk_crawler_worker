@@ -62,9 +62,9 @@ var _ = Describe("Util", func() {
 
 			urlErr, _ := err.(*url.Error)
 			if netErr, ok := urlErr.Err.(*net.OpError); ok {
-				Expect(netErr.Err).To(Equal(syscall.ECONNRESET))
+				Expect(netErr.Err.(*os.SyscallError).Err).To(Equal(syscall.ECONNRESET))
 			} else {
-				Expect(urlErr.Err).To(MatchError("EOF"))
+				Expect(urlErr).To(MatchError("EOF"))
 			}
 			Expect(resp).To(BeNil())
 		})
@@ -76,7 +76,7 @@ var _ = Describe("Util", func() {
 			urlErr, _ := err.(*url.Error)
 			netErr, _ := urlErr.Err.(*net.OpError)
 
-			Expect(netErr.Err).To(Equal(syscall.ECONNREFUSED))
+			Expect(netErr.Err.(*os.SyscallError).Err).To(Equal(syscall.ECONNREFUSED))
 			Expect(resp).To(BeNil())
 		})
 	})
