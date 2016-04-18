@@ -174,7 +174,7 @@ var _ = Describe("Workflow", func() {
 				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
-				maxRetries := 4
+				maxRetries := 5
 
 				err = queueManager.Publish("#", "text/plain", server.URL)
 				Expect(err).To(BeNil())

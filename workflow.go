@@ -105,7 +105,7 @@ func CrawlURL(
 				continue
 			}
 
-			if crawlCount == maxCrawlRetries {
+			if crawlCount >= maxCrawlRetries {
 				item.Reject(false)
 				log.Errorf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
 				continue
