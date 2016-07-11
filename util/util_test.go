@@ -64,7 +64,7 @@ var _ = Describe("Util", func() {
 			if netErr, ok := urlErr.Err.(*net.OpError); ok {
 				Expect(netErr.Err.(*os.SyscallError).Err).To(Equal(syscall.ECONNRESET))
 			} else {
-				Expect(urlErr).To(MatchError("EOF"))
+                                Expect(urlErr.Err).To(MatchError("EOF"))
 			}
 			Expect(resp).To(BeNil())
 		})
