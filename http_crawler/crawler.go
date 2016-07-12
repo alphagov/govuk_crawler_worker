@@ -37,12 +37,13 @@ type Crawler struct {
 	version   string
 }
 
-func NewCrawler(rootURLs []*url.URL, versionNumber string, basicAuth *BasicAuth) *Crawler {
+func NewCrawler(rootURLs []*url.URL, versionNumber string, rateLimitToken string, basicAuth *BasicAuth) *Crawler {
 	return &Crawler{
 		RootURLs: rootURLs,
 
 		basicAuth: basicAuth,
 		version:   versionNumber,
+                rateLimitToken: rateLimitToken,
 	}
 }
 
@@ -59,6 +60,10 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	if c.basicAuth != nil {
 		req.SetBasicAuth(c.basicAuth.Username, c.basicAuth.Password)
 	}
+
+        if c.rateLimitToken != nil {
+                req.Header.Set("Rate-Limit-Token", rateLimitToken)
+        }
 
 	hostname, _ := os.Hostname()
 
