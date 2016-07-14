@@ -24,12 +24,17 @@ var _ = Describe("CrawlerResponse", func() {
 			for _, contentType := range []string{
 				// Provide one with a charset to be sure.
 				"text/html; charset=utf-8",
-				ATOM, CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
+				CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
 				JPEG, JSON, ODP, ODS, ODT, PDF, PNG, XLS, XLSX,
 			} {
 				response.ContentType = contentType
 				Expect(response.AcceptedContentType()).To(BeTrue())
 			}
+		})
+
+		It("doesn't accept feeds", func() {
+			response.ContentType = ATOM
+			Expect(response.AcceptedContentType()).To(BeFalse())
 		})
 	})
 

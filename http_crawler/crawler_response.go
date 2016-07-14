@@ -39,7 +39,7 @@ func (c *CrawlerResponse) AcceptedContentType() bool {
 	}
 
 	switch mimeType {
-	case ATOM, CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
+	case CSS, CSV, DOCX, GIF, HTML, ICO, ICS, JAVASCRIPT,
 		JPEG, JSON, ODP, ODS, ODT, PDF, PNG, XLS, XLSX:
 		return true
 	}
