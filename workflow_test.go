@@ -39,6 +39,7 @@ var _ = Describe("Workflow", func() {
 			testURL      *url.URL
 			urlA         *url.URL
 			urlB         *url.URL
+			token        string
 		)
 
 		BeforeEach(func() {
@@ -59,6 +60,7 @@ var _ = Describe("Workflow", func() {
 				Path:   "/",
 			}
 			rootURLs = []*url.URL{urlA, urlB}
+			token = "cho1coociexei7aech8Zah1rageef2SheewaiQuilaeze1lawoobahcohtheWeik"
 
 			testURL = &url.URL{
 				Scheme: "https",
@@ -143,7 +145,7 @@ var _ = Describe("Workflow", func() {
 				urlA, _ := url.Parse("http://127.0.0.1")
 				urlB, _ := url.Parse("http://127.0.0.2")
 				rootURLs = []*url.URL{urlA, urlB}
-				crawler = NewCrawler(rootURLs, "0.0.0", nil)
+				crawler = NewCrawler(rootURLs, "0.0.0", token, nil)
 				Expect(crawler).ToNot(BeNil())
 			})
 

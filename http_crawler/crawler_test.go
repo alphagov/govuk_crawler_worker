@@ -27,6 +27,7 @@ var _ = Describe("Crawl", func() {
 	var crawler *Crawler
 	var rootURLs []*url.URL
 	var urlA, urlB *url.URL
+	var token string
 
 	BeforeEach(func() {
 		urlA = &url.URL{
@@ -40,7 +41,8 @@ var _ = Describe("Crawl", func() {
 			Path:   "/",
 		}
 		rootURLs = []*url.URL{urlA, urlB}
-		crawler = NewCrawler(rootURLs, "0.0.0", nil)
+		token = "Ay8aix8guitai0uud4ohdeiqu0theuyeiy3Da1ool6nau0ohphaey9nai5teeDac"
+		crawler = NewCrawler(rootURLs, "0.0.0", token, nil)
 		Expect(crawler).ToNot(BeNil())
 	})
 
@@ -70,7 +72,7 @@ var _ = Describe("Crawl", func() {
 			basicAuthTestServer := httptest.NewServer(http.HandlerFunc(basic("username", "password")))
 			defer basicAuthTestServer.Close()
 
-			basicAuthCrawler := NewCrawler([]*url.URL{urlA}, "0.0.0", &BasicAuth{"username", "password"})
+			basicAuthCrawler := NewCrawler([]*url.URL{urlA}, "0.0.0", token, &BasicAuth{"username", "password"})
 
 			testURL, _ := url.Parse(basicAuthTestServer.URL)
 			response, err := basicAuthCrawler.Crawl(testURL)

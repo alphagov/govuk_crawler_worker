@@ -38,6 +38,7 @@ var (
 	rootURLString     = util.GetEnvDefault("ROOT_URLS", "https://www.gov.uk/")
 	ttlExpireString   = util.GetEnvDefault("TTL_EXPIRE_TIME", "12h")
 	mirrorRoot        = os.Getenv("MIRROR_ROOT")
+	rateLimitToken    = os.Getenv("RATE_LIMIT_TOKEN")
 )
 
 const versionNumber string = "0.1.0"
@@ -114,10 +115,10 @@ func main() {
 
 	var crawler *http_crawler.Crawler
 	if basicAuthUsername != "" && basicAuthPassword != "" {
-		crawler = http_crawler.NewCrawler(rootURLs, versionNumber,
+		crawler = http_crawler.NewCrawler(rootURLs, versionNumber, rateLimitToken,
 			&http_crawler.BasicAuth{basicAuthUsername, basicAuthPassword})
 	} else {
-		crawler = http_crawler.NewCrawler(rootURLs, versionNumber, nil)
+		crawler = http_crawler.NewCrawler(rootURLs, versionNumber, rateLimitToken, nil)
 	}
 	log.Infoln("Generated crawler:", crawler)
 
