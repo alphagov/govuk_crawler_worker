@@ -90,6 +90,10 @@ func (p *ProxyTCP) KillConnected() {
 	}
 }
 
+func (p *ProxyTCP) Connections() []net.Conn {
+	return p.conns
+}
+
 func StatsDTiming(label string, start, end time.Time) {
 	statsdClient.Timing("time."+label,
 		int64(end.Sub(start)/time.Millisecond))

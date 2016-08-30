@@ -52,21 +52,25 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should kill existing connections", func() {
-			resp, err := http.Get(localURL)
+			doGet := func() string {
+				resp, err := http.Get(localURL)
 
-			Expect(err).To(BeNil())
-			Expect(resp.StatusCode).To(Equal(statusCode))
+				Expect(err).To(BeNil())
+				Expect(resp.StatusCode).To(Equal(statusCode))
 
-			proxy.KillConnected()
-			resp, err = http.Get(localURL)
-
-			urlErr, _ := err.(*url.Error)
-			if netErr, ok := urlErr.Err.(*net.OpError); ok {
-				Expect(netErr.Err.(*os.SyscallError).Err).To(Equal(syscall.ECONNRESET))
-			} else {
-                                Expect(urlErr.Err).To(MatchError("EOF"))
+				conns := proxy.Connections()
+				return fmt.Sprintf("%+v", (conns)[len(conns)-1])
 			}
-			Expect(resp).To(BeNil())
+
+			// Check that we;re using the same connection initially.
+			c1 := doGet()
+			c2 := doGet()
+			Expect(c1).To(Equal(c2))
+
+			// Killing the connection should result in a new one.
+			proxy.KillConnected()
+			c3 := doGet()
+			Expect(c2).NotTo(Equal(c3))
 		})
 
 		It("should be stoppable", func() {
