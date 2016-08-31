@@ -6,6 +6,6 @@ gom 'github.com/fzzy/radix/redis', :commit => 'acc2681fddcde19503e01e18abf7ca9b1
 gom 'github.com/onsi/ginkgo', :commit => '75d0cd9c7ee52e99b13e6ccfd9e58b4f92b7795e'
 gom 'github.com/onsi/gomega', :commit => '835b5e4242c715976b98ed6bc6ece1d9c7879f66'
 gom 'github.com/quipo/statsd', :commit => 'c3f043b963777f5aa85795d29e6be3f6251c1beb'
-gom 'github.com/streadway/amqp', :commit => '6ffc9248c4b16699477e7411084c2402f2f0c351'
+gom 'github.com/streadway/amqp', :commit => '0c4728c467873d0fac92a31d4d8d082a63a01fab'
 gom 'golang.org/x/net/html', :commit => '8bc62b7ce1723e0e686c39f8fe3c5e8d03c8524c'
 gom 'github.com/tobi/airbrake-go', :commit => '5b5e269e1bc398d43f67e43dafff3414a59cd5a2'
