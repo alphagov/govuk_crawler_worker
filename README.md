@@ -15,12 +15,16 @@ To run this worker you will need:
 
 ## Development
 
-You can run the tests locally by running the following: `make`. This
-will use the `gom` tool to vendorise dependencies into a folder within
-the project.
+You can run the tests locally by running `make`.
 
-You can download the `gom` tool by running:
-`go get github.com/mattn/gom`.
+This project uses [Godep][godep] to manage it's dependencies.  If you have a
+working [Go][go] development setup, you should be able to install
+[Godep][godep] by running:
+
+    go get github.com/tools/godep
+
+[godep]: https://github.com/tools/godep
+[go]: http://golang.org
 
 ## Running
 
