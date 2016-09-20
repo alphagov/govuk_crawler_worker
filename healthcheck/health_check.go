@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // StatusEnum is a enum type for the valid states of a service.
@@ -65,13 +66,18 @@ type Check struct {
 // HealthCheck encapsulates and performs checks which are used to identify the
 // health of a the application.
 type HealthCheck struct {
+	Timeout  time.Duration
 	Checkers []Checker
 }
 
+// DefaultCheckTimeout is the default time period after which checks will be
+// deemed to have failed.
+const DefaultCheckTimeout = time.Second
+
 // NewHealthCheck is a helper function for quickly creating a new HealthCheck
-// value with the appropriate checkers in place.
+// value with the appropriate checkers in place and a default timeout.
 func NewHealthCheck(checkers ...Checker) *HealthCheck {
-	return &HealthCheck{Checkers: checkers}
+	return &HealthCheck{Checkers: checkers, Timeout: DefaultCheckTimeout}
 }
 
 // Status runs all checks and responds with the individual statuses for those
@@ -82,25 +88,47 @@ func NewHealthCheck(checkers ...Checker) *HealthCheck {
 //   `critical` state, then the overall status will be `warning`.
 // * If one or more checks are in a `critical` state, the overall state will be
 //   `critical`.
+//
+// If any check fails to return within a `HealthCheck.Timeout` duration then
+// the check will be deemed to have failed.  In this situation, the individual
+// check status will be set to `critical` and an appropraite message will be
+// added.
 func (h *HealthCheck) Status() Status {
 	checked := map[string]Check{}
 	status := OK
+	chk := Check{}
 
 	for _, checker := range h.Checkers {
-		c := Check{}
+		result := make(chan Check)
 
-		var err error
-		c.Status, err = checker.Check()
+		go func() {
+			c := Check{}
 
-		if err != nil {
-			c.Message = err.Error()
+			var err error
+			c.Status, err = checker.Check()
+
+			if err != nil {
+				c.Message = err.Error()
+			}
+
+			result <- c
+		}()
+
+		select {
+		case c := <-result:
+			chk = c
+		case <-time.After(h.Timeout):
+			chk = Check{
+				Status:  Critical,
+				Message: "Check timed out",
+			}
 		}
 
-		if status < c.Status {
-			status = c.Status
+		if status < chk.Status {
+			status = chk.Status
 		}
 
-		checked[checker.Name()] = c
+		checked[checker.Name()] = chk
 	}
 
 	return Status{

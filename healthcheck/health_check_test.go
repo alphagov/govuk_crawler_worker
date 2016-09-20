@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alphagov/govuk_crawler_worker/healthcheck"
 
@@ -62,6 +63,18 @@ var _ = Describe("HealthCheck", func() {
 		Expect(checks["critical"].Message).To(Equal("A critical failure"))
 	})
 
+	It("gives a Critical status if a check times out", func() {
+		hc := healthcheck.NewHealthCheck(okChecker{sleep: time.Second})
+		hc.Timeout = time.Millisecond
+		Expect(hc.Status().Status).To(Equal(healthcheck.Critical))
+	})
+
+	It("sets a suitable message if a check times out", func() {
+		hc := healthcheck.NewHealthCheck(okChecker{sleep: time.Second})
+		hc.Timeout = time.Millisecond
+		Expect(hc.Status().Checks["ok"].Message).To(Equal("Check timed out"))
+	})
+
 	It("provides an HTTP handler function", func() {
 		hc := healthcheck.NewHealthCheck(okChecker{})
 		w := httptest.NewRecorder()
@@ -82,15 +95,18 @@ func TestHealthCheck(t *testing.T) {
 	RunSpecs(t, "Health Check Suite")
 }
 
-// A checker that already returns `ok`
-type okChecker struct{}
+// A checker that sleeps for a set amount of time and then always returns `ok`
+type okChecker struct {
+	sleep time.Duration
+}
 
 func (okChecker) Name() string { return "ok" }
-func (okChecker) Check() (healthcheck.StatusEnum, error) {
+func (c okChecker) Check() (healthcheck.StatusEnum, error) {
+	time.Sleep(c.sleep)
 	return healthcheck.OK, nil
 }
 
-// A checker that already returns `warning`
+// A checker that always returns `warning`
 type warningChecker struct{}
 
 func (warningChecker) Name() string { return "warning" }
@@ -98,7 +114,7 @@ func (warningChecker) Check() (healthcheck.StatusEnum, error) {
 	return healthcheck.Warning, errors.New("A warning")
 }
 
-// A checker that already returns `critical`
+// A checker that always returns `critical`
 type criticalChecker struct{}
 
 func (criticalChecker) Name() string { return "critical" }
