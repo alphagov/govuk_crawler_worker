@@ -55,6 +55,26 @@ type Checker interface {
 type Status struct {
 	Status StatusEnum       `json:"status"`
 	Checks map[string]Check `json:"checks,omitEmpty"`
+	mutex  sync.RWMutex
+}
+
+// NewStatus returns a new Status value with a default status state of `ok`
+// and an empty set of Checks.
+func NewStatus() Status {
+	return Status{Status: OK, Checks: map[string]Check{}}
+}
+
+// AddCheckResult adds a Check to the Status in a concurrent-access-safe
+// manner.  It also updates the overal s.Status value if the new Check's status
+// value is higher (e.g. if the current status is `ok` and the new Check's
+// status is `warning` or `critical`).
+func (s *Status) AddCheckResult(name string, check Check) {
+	s.mutex.Lock()
+	s.Checks[name] = check
+	if s.Status < check.Status {
+		s.Status = check.Status
+	}
+	s.mutex.Unlock()
 }
 
 // Check is a single check which is performed as part of the overall system
@@ -98,10 +118,8 @@ func NewHealthCheck(checkers ...Checker) *HealthCheck {
 // check status will be set to `critical` and an appropraite message will be
 // added.  If the value of h.Timeout is zero or negative then no timeout is
 // applied and a check may block forever.
-func (h *HealthCheck) Status() Status {
-	checked := map[string]Check{}
-	status := OK
-	chk := Check{}
+func (h *HealthCheck) Status() *Status {
+	status := NewStatus()
 
 	timeout := h.Timeout
 	if timeout <= 0 {
@@ -115,6 +133,7 @@ func (h *HealthCheck) Status() Status {
 		go func(checker Checker) {
 			defer wg.Done()
 			result := make(chan Check)
+			chk := Check{}
 
 			go func() {
 				c := Check{}
@@ -139,20 +158,12 @@ func (h *HealthCheck) Status() Status {
 				}
 			}
 
-			if status < chk.Status {
-				status = chk.Status
-			}
-
-			checked[checker.Name()] = chk
+			status.AddCheckResult(checker.Name(), chk)
 		}(checker)
 	}
 
 	wg.Wait()
-
-	return Status{
-		Status: status,
-		Checks: checked,
-	}
+	return &status
 }
 
 // HTTPHandler is a handler function for serving up the application healthcheck
