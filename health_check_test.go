@@ -1,9 +1,6 @@
 package main_test
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -11,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/alphagov/govuk_crawler_worker/healthcheck"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
@@ -57,11 +55,11 @@ var _ = Describe("HealthCheck", func() {
 		healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 
 		// Overall healthcheck status should be critical
-		Expect(healthCheck.Status().Status).To(Equal(Critical))
+		Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
 
 		// Individual statuses should also be critical
 		for _, check := range healthCheck.Status().Checks {
-			Expect(check.Status).To(Equal(Critical))
+			Expect(check.Status).To(Equal(healthcheck.Critical))
 		}
 	})
 
@@ -94,25 +92,14 @@ var _ = Describe("HealthCheck", func() {
 
 		It("has a successful overall system status", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			Expect(healthCheck.Status().Status).To(Equal(OK))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.OK))
 		})
 
 		It("has successful statuses for each individual check", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			for _, check := range healthCheck.Status().Checks {
-				Expect(check.Status).To(Equal(OK))
+				Expect(check.Status).To(Equal(healthcheck.OK))
 			}
-		})
-
-		It("provides an HTTP handler for marshalling the response to an HTTP server", func() {
-			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			handler := healthCheck.HTTPHandler()
-
-			w := httptest.NewRecorder()
-			handler(w, nil)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(strings.TrimSpace(w.Body.String())).To(Equal(`{"status":"ok","checks":{"rabbitmq_consumer":{"status":"ok"},"rabbitmq_publisher":{"status":"ok"},"redis":{"status":"ok"}}}`))
 		})
 	})
 
@@ -138,8 +125,8 @@ var _ = Describe("HealthCheck", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Producer.Close()
 
-			Expect(healthCheck.Status().Status).To(Equal(Critical))
-			Expect(healthCheck.Status().Checks["rabbitmq_publisher"].Status).To(Equal(Critical))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
+			Expect(healthCheck.Status().Checks["rabbitmq_publisher"].Status).To(Equal(healthcheck.Critical))
 
 			// Clean up using the consumer.
 			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
@@ -156,8 +143,8 @@ var _ = Describe("HealthCheck", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Consumer.Close()
 
-			Expect(healthCheck.Status().Status).To(Equal(Critical))
-			Expect(healthCheck.Status().Checks["rabbitmq_consumer"].Status).To(Equal(Critical))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
+			Expect(healthCheck.Status().Checks["rabbitmq_consumer"].Status).To(Equal(healthcheck.Critical))
 
 			// Clean up using the producer.
 			deleted, err := queueManager.Producer.Channel.QueueDelete(queueName, false, false, true)
