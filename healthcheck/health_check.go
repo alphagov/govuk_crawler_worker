@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -98,38 +99,46 @@ func (h *HealthCheck) Status() Status {
 	status := OK
 	chk := Check{}
 
+	var wg sync.WaitGroup
+	wg.Add(len(h.Checkers))
+
 	for _, checker := range h.Checkers {
-		result := make(chan Check)
+		go func(checker Checker) {
+			defer wg.Done()
+			result := make(chan Check)
 
-		go func() {
-			c := Check{}
+			go func() {
+				c := Check{}
 
-			var err error
-			c.Status, err = checker.Check()
+				var err error
+				c.Status, err = checker.Check()
 
-			if err != nil {
-				c.Message = err.Error()
+				if err != nil {
+					c.Message = err.Error()
+				}
+
+				result <- c
+			}()
+
+			select {
+			case c := <-result:
+				chk = c
+			case <-time.After(h.Timeout):
+				chk = Check{
+					Status:  Critical,
+					Message: "Check timed out",
+				}
 			}
 
-			result <- c
-		}()
-
-		select {
-		case c := <-result:
-			chk = c
-		case <-time.After(h.Timeout):
-			chk = Check{
-				Status:  Critical,
-				Message: "Check timed out",
+			if status < chk.Status {
+				status = chk.Status
 			}
-		}
 
-		if status < chk.Status {
-			status = chk.Status
-		}
-
-		checked[checker.Name()] = chk
+			checked[checker.Name()] = chk
+		}(checker)
 	}
+
+	wg.Wait()
 
 	return Status{
 		Status: status,
