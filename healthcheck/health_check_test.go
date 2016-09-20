@@ -75,6 +75,12 @@ var _ = Describe("HealthCheck", func() {
 		Expect(hc.Status().Checks["ok"].Message).To(Equal("Check timed out"))
 	})
 
+	It("doesn't apply a timeout with a zero duration", func() {
+		hc := healthcheck.NewHealthCheck(okChecker{sleep: time.Millisecond * 10})
+		hc.Timeout = 0
+		Expect(hc.Status().Status).To(Equal(healthcheck.OK))
+	})
+
 	It("provides an HTTP handler function", func() {
 		hc := healthcheck.NewHealthCheck(okChecker{})
 		w := httptest.NewRecorder()

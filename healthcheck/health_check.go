@@ -3,6 +3,7 @@ package healthcheck
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -65,7 +66,9 @@ type Check struct {
 }
 
 // HealthCheck encapsulates and performs checks which are used to identify the
-// health of a the application.
+// health of a the application.  `Timeout` specifies the duration to wait until
+// an individual check is deemed to have failed.  If this value is zero or
+// negative, no timeout is applied.
 type HealthCheck struct {
 	Timeout  time.Duration
 	Checkers []Checker
@@ -93,11 +96,17 @@ func NewHealthCheck(checkers ...Checker) *HealthCheck {
 // If any check fails to return within a `HealthCheck.Timeout` duration then
 // the check will be deemed to have failed.  In this situation, the individual
 // check status will be set to `critical` and an appropraite message will be
-// added.
+// added.  If the value of h.Timeout is zero or negative then no timeout is
+// applied and a check may block forever.
 func (h *HealthCheck) Status() Status {
 	checked := map[string]Check{}
 	status := OK
 	chk := Check{}
+
+	timeout := h.Timeout
+	if timeout <= 0 {
+		timeout = math.MaxInt64
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(len(h.Checkers))
@@ -123,7 +132,7 @@ func (h *HealthCheck) Status() Status {
 			select {
 			case c := <-result:
 				chk = c
-			case <-time.After(h.Timeout):
+			case <-time.After(timeout):
 				chk = Check{
 					Status:  Critical,
 					Message: "Check timed out",
