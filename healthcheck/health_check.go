@@ -1,3 +1,75 @@
+// Package healthcheck provides the ability to run and report on checks
+// designed to give an overview of the basic health of a system.
+//
+// Individual checks are implementations of the healthcheck.Checker interface,
+// for example:
+//
+//   type okChecker struct { }
+//   func (okChecker) Name() string { return "my_check" }
+//   func (okChecker) Check() (healthcheck.StatusEnum, error) {
+//     return healthcheck.OK, nil
+//   }
+//
+// The easiest way to create a healthcheck is to use the
+// healthcheck.NewHealthCheck function which will return a healthcheck value
+// with all given checks configured and a default check timeout applied.
+//
+//   hc := healthcheck.NewHealthCheck(okChecker{})
+//
+// All checks can then be run by calling Status() on the healthcheck by calling
+// the Check() method of each.  All individual checks are run in parallel, and
+// each subsequent call to Status() will re-run all checks.
+//
+//   status := hc.Status()
+//
+// Check Timeouts
+//
+// If you use NewHealthCheck to create a HealthCheck value, it will have a
+// default check timeout of 1 second applied.  If this timeout expires before a
+// check returns, that check will be deemed to have failed and will be given a
+// `critical` status.  The same timeout length applies to each individual
+// check.
+//
+// A you require a custom timeout length, you can either set the timeout after
+// calling NewHealthCheck, or create a HealthCheck value manually.
+//
+//   timeout := time.Minute
+//   hc := healthcheck.NewHealthCheck(...)
+//   hc.timeout = timeout
+//   // or
+//   hc := HealthCheck{Checkers: checkers, Timeout: timeout)}
+//
+// If you don't want a timeout to be applied, set the value to a zero or
+// negative duration.
+//
+// HTTPHandler Func
+//
+// HealthCheck.HTTPHandler is provided as a mechanism to easily expose the
+// results of your healthcheck by using the result via http.HandleFunc:
+//
+//   hc := healthcheck.NewHealthCheck(...)
+//   http.HandleFunc("/healthcheck", hc.HTTPHandler())
+//   log.Fatal(http.ListenAndServe(":12345", nil))
+//
+// The resulting output will be JSON-encoded and include both an overall
+// system health status, as well as the results of any individual checks.
+//
+//   {
+//     "status": "critical",
+//     "checks": {
+//       "check_1": {
+//         "status": "ok"
+//       },
+//       "check_2": {
+//         "status": "warning",
+//         "message": "Extra info about the warning"
+//       },
+//       "check_3": {
+//         "status": "critical",
+//         "message": "Extra info about the critical state"
+//       }
+//     }
+//   }
 package healthcheck
 
 import (
@@ -45,7 +117,7 @@ func (s StatusEnum) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + s.String() + `"`), nil
 }
 
-// Checker is the interface to which all individual status checks must satisfy.
+// Checker is the interface which all individual status checks must satisfy.
 type Checker interface {
 	Name() string
 	Check() (StatusEnum, error)
@@ -94,8 +166,8 @@ type HealthCheck struct {
 	Checkers []Checker
 }
 
-// DefaultCheckTimeout is the default time period after which checks will be
-// deemed to have failed.
+// DefaultCheckTimeout is the default time period used by NewHealthCheck, after
+// which checks will be deemed to have failed.
 const DefaultCheckTimeout = time.Second
 
 // NewHealthCheck is a helper function for quickly creating a new HealthCheck
@@ -107,11 +179,10 @@ func NewHealthCheck(checkers ...Checker) *HealthCheck {
 // Status runs all checks and responds with the individual statuses for those
 // checks, as well as an overall status.
 //
-// * If all checks are `ok`, then the overall status will also be `ok`.
-// * If one or more checks are in a `warning` state, and no checks are in a
-//   `critical` state, then the overall status will be `warning`.
-// * If one or more checks are in a `critical` state, the overall state will be
-//   `critical`.
+// If all checks are `ok`, then the overall status will also be `ok`.  If one
+// or more checks are in a `warning` state, and no checks are in a `critical`
+// state, then the overall status will be `warning`.  If one or more checks are
+// in a `critical` state, the overall state will be `critical`.
 //
 // If any check fails to return within a `HealthCheck.Timeout` duration then
 // the check will be deemed to have failed.  In this situation, the individual
