@@ -90,12 +90,12 @@ var _ = Describe("HealthCheck", func() {
 			queueManager.Close()
 		})
 
-		It("has a successful overall system status", func() {
+		It("reports that the health of the system is OK", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			Expect(healthCheck.Status().Status).To(Equal(healthcheck.OK))
 		})
 
-		It("has successful statuses for each individual check", func() {
+		It("reports that the health of each check is OK", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			for _, check := range healthCheck.Status().Checks {
 				Expect(check.Status).To(Equal(healthcheck.OK))

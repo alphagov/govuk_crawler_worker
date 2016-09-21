@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/alphagov/govuk_crawler_worker/healthcheck"
-
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 )

@@ -92,7 +92,10 @@ var _ = Describe("HealthCheck", func() {
 		hc := healthcheck.NewHealthCheck(okChecker{}, criticalChecker{})
 		w := httptest.NewRecorder()
 		hc.HTTPHandler()(w, nil)
-		Expect(strings.TrimSpace(w.Body.String())).To(Equal(`{"status":"critical","checks":{"critical":{"status":"critical","message":"A critical failure"},"ok":{"status":"ok"}}}`))
+		Expect(strings.TrimSpace(w.Body.String())).To(Equal(
+			`{"status":"critical","checks":{` +
+				`"critical":{"status":"critical","message":"A critical failure"},` +
+				`"ok":{"status":"ok"}}}`))
 	})
 })
 

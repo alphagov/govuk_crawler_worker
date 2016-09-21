@@ -30,7 +30,7 @@
 // `critical` status.  The same timeout length applies to each individual
 // check.
 //
-// A you require a custom timeout length, you can either set the timeout after
+// If you require a custom timeout length, you can either set the timeout after
 // calling NewHealthCheck, or create a HealthCheck value manually.
 //
 //   timeout := time.Minute
