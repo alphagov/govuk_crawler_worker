@@ -1,10 +1,7 @@
 language: go
 
 go:
-  - 1.7
-
-before_install:
-  - go get github.com/mattn/gom
+  - 1.7.1
 
 services:
   - rabbitmq
