@@ -1,9 +1,6 @@
 package main_test
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -11,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/alphagov/govuk_crawler_worker/healthcheck"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 	"github.com/alphagov/govuk_crawler_worker/util"
@@ -55,10 +53,14 @@ var _ = Describe("HealthCheck", func() {
 		ttlHashSet.Close()
 
 		healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-		Expect(healthCheck.Status()).To(Equal(&Status{
-			AMQP:  false,
-			Redis: false,
-		}))
+
+		// Overall healthcheck status should be critical
+		Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
+
+		// Individual statuses should also be critical
+		for _, check := range healthCheck.Status().Checks {
+			Expect(check.Status).To(Equal(healthcheck.Critical))
+		}
 	})
 
 	Describe("working with valid Redis and AMQP connections", func() {
@@ -88,23 +90,16 @@ var _ = Describe("HealthCheck", func() {
 			queueManager.Close()
 		})
 
-		It("should return a status struct showing the status of RabbitMQ and Redis", func() {
+		It("reports that the health of the system is OK", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			Expect(healthCheck.Status()).To(Equal(&Status{
-				AMQP:  true,
-				Redis: true,
-			}))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.OK))
 		})
 
-		It("provides an HTTP handler for marshalling the response to an HTTP server", func() {
+		It("reports that the health of each check is OK", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
-			handler := healthCheck.HTTPHandler()
-
-			w := httptest.NewRecorder()
-			handler(w, nil)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(strings.TrimSpace(w.Body.String())).To(Equal(`{"amqp":true,"redis":true}`))
+			for _, check := range healthCheck.Status().Checks {
+				Expect(check.Status).To(Equal(healthcheck.OK))
+			}
 		})
 	})
 
@@ -130,10 +125,8 @@ var _ = Describe("HealthCheck", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Producer.Close()
 
-			Expect(healthCheck.Status()).To(Equal(&Status{
-				AMQP:  false,
-				Redis: true,
-			}))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
+			Expect(healthCheck.Status().Checks["rabbitmq_publisher"].Status).To(Equal(healthcheck.Critical))
 
 			// Clean up using the consumer.
 			deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
@@ -150,10 +143,8 @@ var _ = Describe("HealthCheck", func() {
 			healthCheck := NewHealthCheck(queueManager, ttlHashSet)
 			queueManager.Consumer.Close()
 
-			Expect(healthCheck.Status()).To(Equal(&Status{
-				AMQP:  false,
-				Redis: true,
-			}))
+			Expect(healthCheck.Status().Status).To(Equal(healthcheck.Critical))
+			Expect(healthCheck.Status().Checks["rabbitmq_consumer"].Status).To(Equal(healthcheck.Critical))
 
 			// Clean up using the producer.
 			deleted, err := queueManager.Producer.Channel.QueueDelete(queueName, false, false, true)

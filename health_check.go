@@ -1,65 +1,79 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-
+	"github.com/alphagov/govuk_crawler_worker/healthcheck"
 	"github.com/alphagov/govuk_crawler_worker/queue"
 	"github.com/alphagov/govuk_crawler_worker/ttl_hash_set"
 )
 
-type Status struct {
-	AMQP  bool `json:"amqp"`
-	Redis bool `json:"redis"`
+// NewHealthCheck creates a new healthcheck.healthCheck value with all relevant
+// checks already defined and configured.
+func NewHealthCheck(queueManager *queue.Manager, ttlHashSet *ttl_hash_set.TTLHashSet) *healthcheck.HealthCheck {
+	return healthcheck.NewHealthCheck(
+		redisChecker{ttlHashSet},
+		rabbitConsumerChecker{queueManager},
+		rabbitPublisherChecker{queueManager},
+	)
 }
 
-type HealthCheck struct {
-	port         string
-	queueManager *queue.Manager
-	ttlHashSet   *ttl_hash_set.TTLHashSet
+// A healthcheck.Checker that reports if the application can talk to Redis.
+type redisChecker struct {
+	ttlHashSet *ttl_hash_set.TTLHashSet
 }
 
-func NewHealthCheck(queueManager *queue.Manager, ttlHashSet *ttl_hash_set.TTLHashSet) *HealthCheck {
-	return &HealthCheck{
-		queueManager: queueManager,
-		ttlHashSet:   ttlHashSet,
-	}
+func (r redisChecker) Name() string {
+	return "redis"
 }
 
-func (h *HealthCheck) Status() *Status {
-	var consumerStatus, publisherStatus, redisStatus bool
+func (r redisChecker) Check() (healthcheck.StatusEnum, error) {
+	pong, err := r.ttlHashSet.Ping()
+	status := healthcheck.Critical
 
-	pong, err := h.ttlHashSet.Ping()
 	if err == nil && pong == "PONG" {
-		redisStatus = true
+		status = healthcheck.OK
 	}
 
-	consumerInspect, err := h.queueManager.Consumer.Channel.QueueInspect(h.queueManager.QueueName)
-	if err == nil && consumerInspect.Name == h.queueManager.QueueName {
-		consumerStatus = true
-	}
-
-	publisherInspect, err := h.queueManager.Producer.Channel.QueueInspect(h.queueManager.QueueName)
-	if err == nil && publisherInspect.Name == h.queueManager.QueueName {
-		publisherStatus = true
-	}
-
-	return &Status{
-		AMQP:  (consumerStatus && publisherStatus),
-		Redis: redisStatus,
-	}
+	return status, err
 }
 
-func (h *HealthCheck) HTTPHandler() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		status := h.Status()
-		encoder := json.NewEncoder(w)
+// A healthcheck.Checker that reports if the application can consume messages
+// from a RabbitMQ queue.
+type rabbitConsumerChecker struct {
+	queueManager *queue.Manager
+}
 
-		err := encoder.Encode(&status)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Cannot encode response data: %v", err),
-				http.StatusInternalServerError)
-		}
+func (r rabbitConsumerChecker) Name() string {
+	return "rabbitmq_consumer"
+}
+
+func (r rabbitConsumerChecker) Check() (healthcheck.StatusEnum, error) {
+	consumerInspect, err := r.queueManager.Consumer.Channel.QueueInspect(r.queueManager.QueueName)
+	status := healthcheck.Critical
+
+	if err == nil && consumerInspect.Name == r.queueManager.QueueName {
+		status = healthcheck.OK
 	}
+
+	return status, err
+}
+
+// A healthcheck.Checker that reports if the application can publisher messages
+// to a RabbitMQ exchange.
+type rabbitPublisherChecker struct {
+	queueManager *queue.Manager
+}
+
+func (r rabbitPublisherChecker) Name() string {
+	return "rabbitmq_publisher"
+}
+
+func (r rabbitPublisherChecker) Check() (healthcheck.StatusEnum, error) {
+	publisherInspect, err := r.queueManager.Producer.Channel.QueueInspect(r.queueManager.QueueName)
+	status := healthcheck.Critical
+
+	if err == nil && publisherInspect.Name == r.queueManager.QueueName {
+		status = healthcheck.OK
+	}
+
+	return status, err
 }
