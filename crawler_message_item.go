@@ -128,14 +128,16 @@ func (c *CrawlerMessageItem) IsBlacklisted() bool {
 
 func parseURLs(urls []string) ([]*url.URL, error) {
 	var parsedURLs []*url.URL
+	var parsedURL url.URL
 	var err error
 
 	for _, u := range urls {
-		u, err := url.Parse(u)
+		parsedURL, err := url.Parse(u)
 		if err != nil {
-			return parsedURLs, err
+			log.Warningln("Malformed URL", u)
+		} else {
+			parsedURLs = append(parsedURLs, parsedURL)
 		}
-		parsedURLs = append(parsedURLs, u)
 	}
 
 	return parsedURLs, err
