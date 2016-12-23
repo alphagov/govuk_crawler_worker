@@ -437,4 +437,20 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(urls).To(HaveLen(1))
 		})
 	})
+
+	Describe("ParseURLs", func() {
+		It("should return all valid URLs regardless of order", func() {
+			var urls []*url.URL
+
+			hrefA := "https://www.gov.uk/tax-disc"
+			hrefB := "https://bad hostname.com/"
+			hrefC := "https://example.com/"
+			hrefs := []string{hrefA, hrefB, hrefC}
+
+			urls, err = parseURLs(hrefs)
+
+			Expect(err).To(BeNil())
+			Expect(len(urls)).To(Equal(2))
+		})
+	})
 })
