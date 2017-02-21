@@ -139,6 +139,7 @@ func parseURLs(urls []string) ([]*url.URL, error) {
 		if err != nil {
 			return parsedURLs, err
 		}
+		log.Infoln("Parsed", u)
 		parsedURLs = append(parsedURLs, u)
 	}
 

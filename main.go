@@ -42,7 +42,7 @@ var (
 	rateLimitToken    = os.Getenv("RATE_LIMIT_TOKEN")
 )
 
-const versionNumber string = "0.1.0"
+const versionNumber string = "0.2.0"
 
 func init() {
 	jsonFlag := flag.Bool("json", false, "output logs as JSON")
@@ -121,7 +121,7 @@ func main() {
 	} else {
 		crawler = http_crawler.NewCrawler(rootURLs, versionNumber, rateLimitToken, nil)
 	}
-	log.Infoln("Generated crawler:", crawler)
+	log.Infoln("Generated crawler 0.2.0:", crawler)
 
 	deliveries, err := queueManager.Consume()
 	if err != nil {

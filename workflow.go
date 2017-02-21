@@ -252,7 +252,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 				continue
 			}
 
-			log.Debugln("Extracted URLs:", len(urls))
+			log.Infoln("Extracted URLs:", len(urls))
 
 			for _, u := range urls {
 				publish <- u.String()
