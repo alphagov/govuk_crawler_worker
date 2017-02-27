@@ -42,7 +42,7 @@ var (
 	rateLimitToken    = os.Getenv("RATE_LIMIT_TOKEN")
 )
 
-const versionNumber string = "0.1.0"
+const versionNumber string = "0.2.0"
 
 func init() {
 	jsonFlag := flag.Bool("json", false, "output logs as JSON")
