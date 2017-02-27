@@ -42,7 +42,11 @@ func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 		return "", err
 	}
 
-	filePath = urlParts.Path
+	filePath, err = url.QueryUnescape(urlParts.Path)
+	if err != nil {
+		return "", err
+	}
+
 	host := strings.SplitN(urlParts.Host, ":", 2)[0]
 
 	contentType, err := c.Response.ParseContentType()
@@ -219,8 +223,7 @@ func findHrefsByElementAttribute(
 
 	document.Find(element).Each(func(_ int, element *goquery.Selection) {
 		href, _ := element.Attr(attr)
-		unescapedHref, _ := url.QueryUnescape(href)
-		trimmedHref := strings.TrimSpace(unescapedHref)
+		trimmedHref := strings.TrimSpace(href)
 		hrefs = append(hrefs, trimmedHref)
 	})
 

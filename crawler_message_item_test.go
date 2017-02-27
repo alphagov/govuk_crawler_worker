@@ -178,8 +178,8 @@ var _ = Describe("CrawlerMessageItem", func() {
 			Expect(item.RelativeFilePath()).To(Equal("www.gov.uk/test/one-two--three---.html"))
 		})
 
-		It("preserves non-latin chars and not URL encode them", func() {
-			testURL.Path = "/test/如何在香港申請英國簽證"
+		It("unencodes non-latin chars and does not URL encode them", func() {
+			testURL.Path = url.QueryEscape("/test/如何在香港申請英國簽證")
 			delivery = amqp.Delivery{Body: []byte(testURL.String())}
 
 			item = NewCrawlerMessageItem(delivery, rootURLs, []string{})
@@ -370,20 +370,6 @@ var _ = Describe("CrawlerMessageItem", func() {
 
 			Expect(err).To(BeNil())
 			Expect(urls).To(BeEmpty())
-		})
-
-		It("will unescape URLs", func() {
-			item.Response.Body = []byte(`<div><a href="https://www.gov.uk/bar%20"></a></div>`)
-			expectedURL := &url.URL{
-				Scheme: "https",
-				Host:   "www.gov.uk",
-				Path:   "/bar",
-			}
-
-			urls, err := item.ExtractURLs()
-
-			Expect(err).To(BeNil())
-			Expect(urls).To(ContainElement(expectedURL))
 		})
 
 		It("should extract relative URLs", func() {
