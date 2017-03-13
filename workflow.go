@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -199,15 +200,38 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 				continue
 			}
 
-			err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
+			skipFileWrite := false
+			// If the file already exits check if we need to re-write it
+			// os.Stat will return an error if the file doesn't exist, in which
+			// case skip this check.
+			if _, err := os.Stat(filePath); err == nil {
+				oldContents, err := ioutil.ReadFile(filePath)
 
-			if err != nil {
-				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
-				continue
+				if err != nil {
+					// There was an error reading the old data so just over-write it
+					log.Warningln("Error reading previous version of file:", filePath, err)
+				} else {
+					oldContentsMD5 := md5.Sum(oldContents)
+					newContentsMD5 := md5.Sum(item.Response.Body)
+
+					// If the MD5s are the same we can skip writing this file
+					skipFileWrite = oldContentsMD5 == newContentsMD5
+				}
 			}
 
-			log.Debugln("Wrote URL body to disk for:", item.URL())
+			if skipFileWrite {
+				log.Debugln("Skipping writing URL body to disk for:", item.URL())
+			} else {
+				err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
+
+				if err != nil {
+					item.Reject(false)
+					log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
+					continue
+				}
+
+				log.Debugln("Wrote URL body to disk for:", item.URL())
+			}
 
 			contentType, err := item.Response.ParseContentType()
 			if err != nil {

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	. "github.com/alphagov/govuk_crawler_worker"
@@ -303,6 +304,81 @@ var _ = Describe("Workflow", func() {
 
 				fileContent, err := ioutil.ReadFile(filePath)
 
+				Expect(err).To(BeNil())
+				Expect(fileContent).To(Equal(item.Response.Body))
+
+				close(outbound)
+			})
+
+			It("did not write files we already have", func() {
+				u := "https://www.gov.uk/extract-some-urls"
+				deliveryItem := &amqp.Delivery{Body: []byte(u)}
+				item := NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
+				item.Response = &CrawlerResponse{
+					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					ContentType: HTML,
+					URL:         testURL,
+				}
+
+				// Manually create the file & get its mod time
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+				dirPath := filepath.Dir(filePath)
+				err := os.MkdirAll(dirPath, 0755)
+				err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
+				fileInfo, err := os.Stat(filePath)
+				initialWriteTime := fileInfo.ModTime().Nanosecond()
+
+				// Make sure there's an appreciable delay between writes
+				time.Sleep(time.Second)
+
+				// Run the crawler
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+				outbound <- item
+				Expect(<-extract).To(Equal(item))
+
+				// Get the values we want to test against
+				fileContent, err := ioutil.ReadFile(filePath)
+				fileInfo, err = os.Stat(filePath)
+				finalWriteTime := fileInfo.ModTime().Nanosecond()
+
+				// The file should be unchanged from when we created it
+				Expect(err).To(BeNil())
+				Expect(fileContent).To(Equal(item.Response.Body))
+				Expect(finalWriteTime).To(Equal(initialWriteTime))
+
+				close(outbound)
+			})
+
+			It("wrote files with new contents", func() {
+				u := "https://www.gov.uk/extract-some-urls"
+				deliveryItem := &amqp.Delivery{Body: []byte(u)}
+				item := NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
+				item.Response = &CrawlerResponse{
+					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					ContentType: HTML,
+					URL:         testURL,
+				}
+
+				// Manually create the file so it's not written
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+				dirPath := filepath.Dir(filePath)
+				err := os.MkdirAll(dirPath, 0755)
+				err = ioutil.WriteFile(filePath, []byte(`Stale contents`), 0644)
+
+				// Make sure there's an appreciable delay between writes
+				time.Sleep(time.Second)
+
+				// Run the crawler
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+				outbound <- item
+				Expect(<-extract).To(Equal(item))
+
+				// The file should have been updated
+				fileContent, err := ioutil.ReadFile(filePath)
 				Expect(err).To(BeNil())
 				Expect(fileContent).To(Equal(item.Response.Body))
 
