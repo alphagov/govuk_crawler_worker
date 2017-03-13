@@ -26,6 +26,26 @@ working [Go][go] development setup, you should be able to install
 [godep]: https://github.com/tools/godep
 [go]: http://golang.org
 
+### Getting Started
+
+This assumes you are using the [GDS Development VM][vm].
+
+1. `cd /var/govuk/gopath` This is the default Go directory for the dev VM. It should mirror `../../` on the host (i.e. the same directory that contains this repo).
+2. `mkdir -p src/github.com/alphagov; cd src/github.com/alphagov`
+3. `git clone git@github.com:alphagov/govuk_crawler_worker.git; cd govuk_crawler_worker`
+3. `go get github.com/tools/godep` -- install godep
+4. `godep get` -- install the depenencies
+5. `sudo rabbitmqctl add_user guest guest` -- create a guest user
+6. `sudo rabbitmqctl set_permissions guest ".*" ".*" ".*"` -- give that user full permissions
+
+If you now run `make` in this repo all tests should pass.
+
+Errors like `{Code: AccessRefused, Reason: "username or password not allowed"}`indicate that the user isn't configured on rabbitmq (see step 4). Whilst `{Code: AccessRefused, Reason: "no access to this vhost"}` indicates lack of permissions (see step 5).
+
+**NB** this creates an unsafe environment and should only used for local development.
+
+[vm]: https://github.com/alphagov/govuk-puppet/tree/master/development-vm
+
 ## Running
 
 To run the worker you'll first need to build it using `go build` to
