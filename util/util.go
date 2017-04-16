@@ -27,10 +27,15 @@ func GetEnvDefault(key string, defaultVal string) string {
 // used to test reconnect behaviour.
 type ProxyTCP struct {
 	sync.Mutex
+	Conns    []connectionTuple
 	listener net.Listener
 	remote   string
-	conns    []net.Conn
 	wg       sync.WaitGroup
+}
+
+type connectionTuple struct {
+	LConn net.Conn
+	RConn net.Conn
 }
 
 func NewProxyTCP(lAddr, rAddr string) (*ProxyTCP, error) {
@@ -62,14 +67,14 @@ func (p *ProxyTCP) AcceptLoop() {
 			return
 		}
 
-		p.Lock()
-		p.conns = append(p.conns, lConn)
-		p.Unlock()
-
 		rConn, err := net.Dial("tcp", p.remote)
 		if err != nil {
 			return
 		}
+
+		p.Lock()
+		p.Conns = append(p.Conns, connectionTuple{LConn: lConn, RConn: rConn})
+		p.Unlock()
 
 		go io.Copy(lConn, rConn)
 		go io.Copy(rConn, lConn)
@@ -85,8 +90,8 @@ func (p *ProxyTCP) Close() {
 func (p *ProxyTCP) KillConnected() {
 	p.Lock()
 	defer p.Unlock()
-	for _, conn := range p.conns {
-		conn.Close()
+	for _, conn := range p.Conns {
+		conn.LConn.Close()
 	}
 }
 

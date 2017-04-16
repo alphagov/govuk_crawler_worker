@@ -1,19 +1,26 @@
 package queue_test
 
 import (
+	"fmt"
+
 	. "github.com/alphagov/govuk_crawler_worker/queue"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"net"
 	"net/url"
 
 	"github.com/alphagov/govuk_crawler_worker/util"
+	"github.com/michaelklishin/rabbit-hole"
 	"github.com/streadway/amqp"
 )
 
 var _ = Describe("Connection", func() {
 	amqpAddr := util.GetEnvDefault("AMQP_ADDRESS", "amqp://guest:guest@localhost:5672/")
+	rabbitAdminAddr := util.GetEnvDefault("RABBITMQ_ADMIN_ADDRESS", "http://127.0.0.1:15672")
+	rabbitAdminUser := util.GetEnvDefault("RABBITMQ_ADMIN_USER", "guest")
+	rabbitAdminPass := util.GetEnvDefault("RABBITMQ_ADMIN_PASS", "guest")
 
 	It("fails if it can't connect to an AMQP server", func() {
 		connection, err := NewConnection("amqp://guest:guest@localhost:50000/")
@@ -85,8 +92,51 @@ var _ = Describe("Connection", func() {
 			close(done)
 		})
 
+		It("should exit if server closes connection", func(done Done) {
+			expectedError := "Exception (320) Reason: \"CONNECTION_FORCED - Closed via management plugin\""
+
+			rmqc, err := rabbithole.NewClient(rabbitAdminAddr, rabbitAdminUser, rabbitAdminPass)
+			Expect(err).To(BeNil())
+
+			amqpAddrParts, err := url.Parse(amqpAddr)
+			Expect(err).To(BeNil())
+
+			amqpHost, amqpPort, err := net.SplitHostPort(amqpAddrParts.Host)
+			Expect(err).To(BeNil())
+
+			amqpIPAddresses, err := net.LookupHost(amqpHost)
+			Expect(err).To(BeNil())
+
+			amqpIP := amqpIPAddresses[0]
+			amqpAddrTup := net.JoinHostPort(amqpIP, amqpPort)
+
+			Expect(len(proxy.Conns)).Should(BeNumerically(">", 0))
+
+			_, err = rmqc.ListConnections()
+			Expect(err).To(BeNil())
+
+			for x := range proxy.Conns {
+				outgoingAddrTup := proxy.Conns[x].RConn.LocalAddr()
+				connectionName := fmt.Sprintf("%s -> %s", outgoingAddrTup, amqpAddrTup)
+				_, err := rmqc.CloseConnection(connectionName)
+				Expect(err).To(BeNil())
+			}
+
+			// We'd normally log.Fatalln() here to exit.
+			amqpErr := <-fatalErrs
+			Expect(amqpErr.Error()).To(Equal(expectedError))
+			Expect(amqpErr.Recover).To(BeFalse())
+			Expect(amqpErr.Server).To(BeTrue())
+
+			// Connection no longer works
+			_, err = connection.Channel.QueueInspect(queueName)
+			Expect(err).To(Equal(amqp.ErrClosed))
+
+			close(done)
+		})
+
 		It("should exit on non-recoverable errors", func(done Done) {
-			const expectedError = "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
+			expectedError := "Exception \\(501\\) Reason: \"EOF\"|connection reset by peer"
 
 			proxy.KillConnected()
 
