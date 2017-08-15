@@ -33,6 +33,13 @@ node {
       stage("Archive artifact") {
         archiveArtifacts 'govuk_crawler_worker'
       }
+
+      if (env.BRANCH_NAME == 'master') {
+        stage("Push binary to S3") {
+          target_tag = govuk.getNewStyleReleaseTag()
+          govuk.uploadArtefactToS3('govuk_crawler_worker', "s3://govuk-integration-artefact/govuk_crawler_worker/${target_tag}/govuk_crawler_worker")
+        }
+      }
     }
 
     if (env.BRANCH_NAME == 'master') {
