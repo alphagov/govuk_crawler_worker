@@ -38,6 +38,8 @@ node {
         stage("Push binary to S3") {
           target_tag = govuk.getNewStyleReleaseTag()
           govuk.uploadArtefactToS3('govuk_crawler_worker', "s3://govuk-integration-artefact/govuk_crawler_worker/${target_tag}/govuk_crawler_worker")
+          echo "Uploaded to S3 with tag: ${target_tag}."
+          currentBuild.displayName = "#${env.BUILD_NUMBER}:${target_tag}"
         }
       }
     }
