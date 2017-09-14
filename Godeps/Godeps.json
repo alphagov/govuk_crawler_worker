@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/alphagov/govuk_crawler_worker",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
+	"GodepVersion": "v79",
 	"Deps": [
 		{
 			"ImportPath": "github.com/PuerkitoBio/goquery",
@@ -26,11 +26,6 @@
 			"ImportPath": "github.com/fzzy/radix/redis/resp",
 			"Comment": "v0.5.6-2-g3528e87",
 			"Rev": "3528e87a910c6730810cec1be187f989d7d9442a"
-		},
-		{
-			"ImportPath": "github.com/gemnasium/logrus-airbrake-legacy-hook",
-			"Comment": "v1.0.0",
-			"Rev": "4e5c028da524b9378dbbea73a15ebbb3662ede85"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
@@ -178,10 +173,6 @@
 		{
 			"ImportPath": "github.com/streadway/amqp",
 			"Rev": "2e25825abdbd7752ff08b270d313b93519a0a232"
-		},
-		{
-			"ImportPath": "github.com/tobi/airbrake-go",
-			"Rev": "a3cdd910a3ffef88a20fbecc10363a520ad61a0a"
 		},
 		{
 			"ImportPath": "golang.org/x/net/html",
