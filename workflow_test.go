@@ -127,10 +127,6 @@ var _ = Describe("Workflow", func() {
 				go AcknowledgeItem(outbound, ttlHashSet)
 
 				Eventually(outbound).Should(HaveLen(0))
-				Eventually(func() bool {
-					exists, _ := ttlHashSet.Exists(u)
-					return exists
-				}).Should(BeTrue())
 
 				// Close the channel to stop the goroutine for AcknowledgeItem.
 				close(outbound)
@@ -170,13 +166,15 @@ var _ = Describe("Workflow", func() {
 				body := `<a href="gov.uk">bar</a>`
 				server := testServer(http.StatusInternalServerError, body)
 
+				ttlHashSet.Set(server.URL, Enqueued)
+
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
 				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
 				Expect(len(crawlChan)).To(Equal(0))
 
-				maxRetries := 5
+				maxRetries := 2
 
 				err = queueManager.Publish("#", "text/plain", server.URL)
 				Expect(err).To(BeNil())
@@ -187,7 +185,7 @@ var _ = Describe("Workflow", func() {
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(maxRetries))
+				}).Should(Equal(maxRetries + 1))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
@@ -199,10 +197,12 @@ var _ = Describe("Workflow", func() {
 				close(crawlChan)
 			})
 
-			It("adds a redirect URL to the TTLHashSet so we don't immediately retry it", func() {
+			It("resets a a redirect URL so it can be added back into the queue immediately", func() {
 				body := `<a href="gov.uk">bar</a>`
 				server := testServer(http.StatusMovedPermanently, body)
 
+				ttlHashSet.Set(server.URL, Enqueued)
+
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 
@@ -220,7 +220,7 @@ var _ = Describe("Workflow", func() {
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(AlreadyCrawled))
+				}).Should(Equal(ReadyToEnqueue))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
@@ -232,9 +232,11 @@ var _ = Describe("Workflow", func() {
 				close(crawlChan)
 			})
 
-			It("adds a non-HTML URL to the TTLHashSet so we don't immediately retry it", func() {
+			It("resets a parsed URL so it can be added back into the queue immediately retry it", func() {
 				body := `I am not HTML. No HTML, see?`
 				server := testServer(http.StatusOK, body)
+
+				ttlHashSet.Set(server.URL, Enqueued)
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
@@ -253,7 +255,7 @@ var _ = Describe("Workflow", func() {
 
 				Eventually(func() (int, error) {
 					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(AlreadyCrawled))
+				}).Should(Equal(ReadyToEnqueue))
 
 				Eventually(func() (int, error) {
 					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
@@ -367,6 +369,38 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("PublishURLs", func() {
+			It("doesn't publish URLs that are already enqueued", func() {
+				u := "https://www.gov.uk/government/organisations"
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				err = ttlHashSet.Set(u, Enqueued)
+				Expect(err).To(BeNil())
+
+				publish := make(chan string, 1)
+				outbound := make(chan []byte, 1)
+
+				go func() {
+					for item := range deliveries {
+						outbound <- item.Body
+						item.Ack(false)
+					}
+				}()
+				go PublishURLs(ttlHashSet, queueManager, publish)
+
+				publish <- u
+				Eventually(publish).Should(HaveLen(1))
+
+				Eventually(publish).Should(HaveLen(0))
+				Eventually(outbound).Should(HaveLen(0))
+
+				// Close the channel to stop the goroutine for PublishURLs.
+				close(publish)
+				close(outbound)
+			})
+
 			It("doesn't publish URLs that have already been crawled", func() {
 				u := "https://www.gov.uk/government/organisations"
 
@@ -399,7 +433,7 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 
-			It("publishes URLs that haven't been crawled yet", func() {
+			It("publishes URLs that are ReadyToEnqueue", func() {
 				u := "https://www.gov.uk/government/foo"
 
 				deliveries, err := queueManager.Consume()
@@ -421,6 +455,10 @@ var _ = Describe("Workflow", func() {
 
 				Expect(<-outbound).To(Equal([]byte(u)))
 				Expect(len(publish)).To(Equal(0))
+
+				Eventually(func() (int, error) {
+					return ttlHashSet.Get(u)
+				}).Should(Equal(Enqueued))
 
 				close(publish)
 				close(outbound)

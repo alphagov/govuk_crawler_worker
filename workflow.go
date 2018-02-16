@@ -15,8 +15,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-const NotRecentlyCrawled int = 0
-const AlreadyCrawled int = -1
+const ReadyToEnqueue int = 0
+const Enqueued int = 1
 
 func ReadFromQueue(
 	inboundChannel <-chan amqp.Delivery,
@@ -40,21 +40,6 @@ func ReadFromQueue(
 			if message.IsBlacklisted() {
 				item.Ack(false)
 				log.Debugln("URL is blacklisted (acknowledging):", message.URL())
-				continue
-			}
-
-			crawlCount, err := ttlHashSet.Get(message.URL())
-			if err != nil {
-				item.Reject(true)
-				log.Errorln("Couldn't check existence of (rejecting):", message.URL(), err)
-				continue
-			}
-
-			if crawlCount == AlreadyCrawled {
-				log.Debugln("URL read from queue already crawled:", message.URL())
-				if err = item.Ack(false); err != nil {
-					log.Errorln("Ack failed (ReadFromQueue): ", message.URL())
-				}
 				continue
 			}
 
@@ -105,9 +90,10 @@ func CrawlURL(
 				continue
 			}
 
-			if crawlCount >= maxCrawlRetries {
+			if crawlCount > maxCrawlRetries {
 				item.Reject(false)
 				log.Errorf("Aborting crawl of URL which has been retried %d times (rejecting): %s", maxCrawlRetries, u.String())
+
 				continue
 			}
 
@@ -128,11 +114,13 @@ func CrawlURL(
 					}
 
 					item.Reject(true)
+
 					log.Warningln("Couldn't crawl (requeueing):", u.String(), err)
 				case http_crawler.ErrRedirect:
-					setErr := ttlHashSet.Set(u.String(), AlreadyCrawled)
-					if setErr != nil {
-						log.Errorln("Couldn't mark item as already crawled:", u.String(), setErr)
+
+					err = ttlHashSet.Set(item.URL(), ReadyToEnqueue)
+					if err != nil {
+						log.Errorln("Couldn't mark item as already crawled:", item.URL(), err)
 					}
 
 					item.Reject(false)
@@ -155,7 +143,7 @@ func CrawlURL(
 					log.Errorln("Ack failed (CrawlURL): ", item.URL())
 				}
 
-				err = ttlHashSet.Set(item.URL(), AlreadyCrawled)
+				err = ttlHashSet.Set(item.URL(), ReadyToEnqueue)
 				if err != nil {
 					log.Errorln("Couldn't mark item as already crawled:", item.URL(), err)
 				}
@@ -272,16 +260,20 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manager, publish <-chan string) {
 	for url := range publish {
 		start := time.Now()
-		crawlCount, err := ttlHashSet.Get(url)
+		queueStatus, err := ttlHashSet.Get(url)
 
 		if err != nil {
 			log.Errorln("Couldn't check existence of URL:", url, err)
 			continue
 		}
 
-		if crawlCount == AlreadyCrawled {
-			log.Debugln("URL extracted from page already crawled:", url)
-		} else if crawlCount == NotRecentlyCrawled {
+		if queueStatus == Enqueued {
+			log.Debugln("URL is already in the queue:", url)
+		} else if queueStatus > Enqueued {
+			log.Debugln("URL is already in the queue (reporting 5XX's):", url)
+		} else {
+			ttlHashSet.Set(url, Enqueued)
+
 			err = queueManager.Publish("#", "text/plain", url)
 			if err != nil {
 				log.Fatalln("Delivery failed:", url, err)
@@ -298,16 +290,6 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
-		err := ttlHashSet.Set(url, AlreadyCrawled)
-		if err != nil {
-			item.Reject(false)
-			log.Errorln("Acknowledge failed (rejecting):", url, err)
-			continue
-		}
-
-		if err = item.Ack(false); err != nil {
-			log.Errorln("Ack failed (AcknowledgeItem): ", item.URL())
-		}
 		log.Debugln("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
