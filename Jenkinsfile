@@ -36,9 +36,9 @@ node {
 
       if (env.BRANCH_NAME == 'master') {
         stage("Push binary to S3") {
-          govuk.uploadArtefactToS3('govuk_crawler_worker', "s3://govuk-integration-artefact/govuk_crawler_worker/release_#${env.BUILD_NUMBER}/govuk_crawler_worker")
-          echo "Uploaded to S3 with tag: release_#${env.BUILD_NUMBER}."
-          currentBuild.displayName = "#${env.BUILD_NUMBER}:release_#${env.BUILD_NUMBER}"
+          govuk.uploadArtefactToS3('govuk_crawler_worker', "s3://govuk-integration-artefact/govuk_crawler_worker/release_${env.BUILD_NUMBER}/govuk_crawler_worker")
+          echo "Uploaded to S3 with tag: release_${env.BUILD_NUMBER}."
+          currentBuild.displayName = "#${env.BUILD_NUMBER}:release_${env.BUILD_NUMBER}"
         }
       }
     }
