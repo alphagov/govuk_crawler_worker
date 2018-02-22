@@ -29,7 +29,7 @@ var (
 	maxCrawlRetries   = util.GetEnvDefault("MAX_CRAWL_RETRIES", "4")
 	queueName         = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
 	redisAddr         = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
-	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "govuk_crawler_worker")
+	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "gcw")
 	rootURLs          []*url.URL
 	rootURLString     = util.GetEnvDefault("ROOT_URLS", "https://www.gov.uk/")
 	ttlExpireString   = util.GetEnvDefault("TTL_EXPIRE_TIME", "12h")
