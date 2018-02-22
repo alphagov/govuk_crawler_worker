@@ -17,7 +17,7 @@ var _ = Describe("TTLHashSet", func() {
 	prefix := "govuk_mirror_crawler_test"
 
 	It("returns an error when asking for a TTLHashSet object that can't connect to redis", func() {
-		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000", time.Hour)
+		ttlHashSet, err := NewTTLHashSet(prefix, "127.0.0.1:20000", time.Hour, time.Minute)
 
 		Expect(err).ToNot(BeNil())
 		Expect(ttlHashSet).To(BeNil())
@@ -40,7 +40,7 @@ var _ = Describe("TTLHashSet", func() {
 			Expect(err).To(BeNil())
 			Expect(proxy).ToNot(BeNil())
 
-			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr, time.Hour)
+			ttlHashSet, err = NewTTLHashSet(prefix, proxyAddr, time.Hour, time.Minute)
 
 			Expect(err).To(BeNil())
 			Expect(ttlHashSet).ToNot(BeNil())
@@ -112,7 +112,7 @@ var _ = Describe("TTLHashSet", func() {
 		)
 
 		BeforeEach(func() {
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour, time.Minute)
 		})
 
 		AfterEach(func() {
@@ -171,6 +171,34 @@ var _ = Describe("TTLHashSet", func() {
 
 				Expect(err).To(BeNil())
 				Expect(ttl).To(BeNumerically(">", 1000))
+			})
+		})
+
+		Describe("SetOrExtend()", func() {
+			It("should set the value if it doesn't yet exist", func() {
+				key := "key.without.extension"
+				err := ttlHashSet.SetOrExtend(key, 1)
+
+				Expect(err).To(BeNil())
+
+				ttl, err := ttlHashSet.TTL(key)
+
+				Expect(err).To(BeNil())
+				Expect(ttl).To(BeNumerically("<", time.Minute.Seconds() + 1.0))
+			})
+
+			It("setting the key multiple time will extend the TTL", func() {
+				key := "key.without.extension"
+				err := ttlHashSet.SetOrExtend(key, 1)
+				Expect(err).To(BeNil())
+
+				err = ttlHashSet.SetOrExtend(key, 1)
+				Expect(err).To(BeNil())
+
+				ttl, err := ttlHashSet.TTL(key)
+
+				Expect(err).To(BeNil())
+				Expect(ttl).To(BeNumerically(">", time.Minute.Seconds()))
 			})
 		})
 	})

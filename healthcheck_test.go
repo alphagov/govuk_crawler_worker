@@ -38,7 +38,7 @@ var _ = Describe("HealthCheck", func() {
 		queueManager.Consumer.HandleChannelClose = func(_ string) {}
 		queueManager.Producer.HandleChannelClose = func(_ string) {}
 
-		ttlHashSet, ttlHashSetErr := ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
+		ttlHashSet, ttlHashSetErr := ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour, time.Minute)
 		Expect(ttlHashSetErr).To(BeNil())
 
 		deleted, err := queueManager.Consumer.Channel.QueueDelete(queueName, false, false, true)
@@ -72,7 +72,7 @@ var _ = Describe("HealthCheck", func() {
 			queueManager.Consumer.HandleChannelClose = func(_ string) {}
 			queueManager.Producer.HandleChannelClose = func(_ string) {}
 
-			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour, time.Minute)
 			Expect(ttlHashSetErr).To(BeNil())
 		})
 
@@ -112,7 +112,7 @@ var _ = Describe("HealthCheck", func() {
 			queueManager.Consumer.HandleChannelClose = func(_ string) {}
 			queueManager.Producer.HandleChannelClose = func(_ string) {}
 
-			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = ttl_hash_set.NewTTLHashSet(prefix, redisAddr, time.Hour, time.Minute)
 			Expect(ttlHashSetErr).To(BeNil())
 		})
 

@@ -105,6 +105,10 @@ func CrawlURL(
 					switch err {
 					case http_crawler.ErrRetryRequest5XX:
 						ttlHashSet.Incr(u.String())
+						// we need to increment twice if the value is 1 as that means TTL on the key had expired
+						if crawlCount, err = ttlHashSet.Get(u.String()); crawlCount == 1 {
+							ttlHashSet.Incr(u.String())
+						}
 					case http_crawler.ErrRetryRequest429:
 						sleepTime := 5 * time.Second
 
@@ -267,17 +271,21 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manage
 			continue
 		}
 
-		if queueStatus == Enqueued {
-			log.Debugln("URL is already in the queue:", url)
-		} else if queueStatus > Enqueued {
+		if queueStatus > Enqueued {
 			log.Debugln("URL is already in the queue (reporting 5XX's):", url)
 		} else {
-			ttlHashSet.Set(url, Enqueued)
+			if queueStatus == Enqueued {
+				log.Debugln("URL is already in the queue:", url)
+			} else {
+				ttlHashSet.SetOrExtend(url, Enqueued)
 
-			err = queueManager.Publish("#", "text/plain", url)
-			if err != nil {
-				log.Fatalln("Delivery failed:", url, err)
+				err = queueManager.Publish("#", "text/plain", url)
+				if err != nil {
+					log.Fatalln("Delivery failed:", url, err)
+				}
 			}
+
+			ttlHashSet.SetOrExtend(url, Enqueued)
 		}
 
 		util.StatsDGauge("publish_urls", int64(len(publish)))
