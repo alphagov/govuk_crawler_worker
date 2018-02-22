@@ -290,6 +290,10 @@ func AcknowledgeItem(inbound <-chan *CrawlerMessageItem, ttlHashSet *ttl_hash_se
 		start := time.Now()
 		url := item.URL()
 
+		err := item.Ack(false)
+		if err != nil {
+			log.Errorln("Ack failed (AcknowledgeItem): ", item.URL())
+		}
 		log.Debugln("Acknowledged:", url)
 
 		util.StatsDTiming("acknowledge_item", start, time.Now())
