@@ -4,6 +4,8 @@ import (
 	"net"
 	"sync"
 	"time"
+	"crypto/md5"
+	"fmt"
 
 	"github.com/fzzy/radix/redis"
 )
@@ -53,7 +55,7 @@ func NewTTLHashSet(prefix string, address string, ttlExpiryTime time.Duration) (
 }
 
 func (t *TTLHashSet) Incr(key string) error {
-	localKey := prefixKey(t.prefix, key)
+	localKey := prefixAndDigestKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
@@ -78,7 +80,7 @@ func (t *TTLHashSet) Incr(key string) error {
 }
 
 func (t *TTLHashSet) Set(key string, val int) error {
-	localKey := prefixKey(t.prefix, key)
+	localKey := prefixAndDigestKey(t.prefix, key)
 
 	// Use pipelining to set the key and set expiry in one go.
 	t.mutex.Lock()
@@ -101,7 +103,7 @@ func (t *TTLHashSet) Close() error {
 }
 
 func (t *TTLHashSet) Get(key string) (int, error) {
-	localKey := prefixKey(t.prefix, key)
+	localKey := prefixAndDigestKey(t.prefix, key)
 
 	t.mutex.Lock()
 	get, err := t.client.Cmd("GET", localKey).Int()
@@ -119,7 +121,7 @@ func (t *TTLHashSet) Get(key string) (int, error) {
 }
 
 func (t *TTLHashSet) Exists(key string) (bool, error) {
-	localKey := prefixKey(t.prefix, key)
+	localKey := prefixAndDigestKey(t.prefix, key)
 
 	t.mutex.Lock()
 	exists, err := t.client.Cmd("EXISTS", localKey).Bool()
@@ -173,7 +175,7 @@ func (t *TTLHashSet) Reconnect() {
 }
 
 func (t *TTLHashSet) TTL(key string) (int, error) {
-	localKey := prefixKey(t.prefix, key)
+	localKey := prefixAndDigestKey(t.prefix, key)
 
 	t.mutex.Lock()
 	ttl, err := t.client.Cmd("TTL", localKey).Int()
@@ -197,6 +199,6 @@ func (t *TTLHashSet) reconnectIfIOError(err error) {
 	}
 }
 
-func prefixKey(prefix string, key string) string {
-	return prefix + ":" + key
+func prefixAndDigestKey(prefix string, key string) string {
+	return prefix + ":" + fmt.Sprintf("%x", md5.Sum([]byte(key)))
 }
