@@ -33,6 +33,7 @@ var (
 	rootURLs          []*url.URL
 	rootURLString     = util.GetEnvDefault("ROOT_URLS", "https://www.gov.uk/")
 	ttlExpireString   = util.GetEnvDefault("TTL_EXPIRE_TIME", "12h")
+	ttlExtendString   = util.GetEnvDefault("TTL_EXTEND_TIME", "15m")
 	mirrorRoot        = os.Getenv("MIRROR_ROOT")
 	rateLimitToken    = os.Getenv("RATE_LIMIT_TOKEN")
 )
@@ -90,7 +91,12 @@ func main() {
 		log.Fatalln("Couldn't parse TTL_EXPIRE_TIME:", ttlExpireString)
 	}
 
-	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr, ttlExpireTime)
+	ttlExtendTime, err := time.ParseDuration(ttlExtendString)
+	if err != nil {
+		log.Fatalln("Couldn't parse TTL_EXTEND_TIME:", ttlExtendString)
+	}
+
+	ttlHashSet, err := ttl_hash_set.NewTTLHashSet(redisKeyPrefix, redisAddr, ttlExpireTime, ttlExtendTime)
 	if err != nil {
 		log.Fatalln(err)
 	}

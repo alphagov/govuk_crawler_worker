@@ -38,9 +38,10 @@ type TTLHashSet struct {
 	prefix        string
 	rcMutex       ReconnectMutex
 	ttlExpiryTime time.Duration
+	ttlExtendTime time.Duration
 }
 
-func NewTTLHashSet(prefix string, address string, ttlExpiryTime time.Duration) (*TTLHashSet, error) {
+func NewTTLHashSet(prefix string, address string, ttlExpiryTime time.Duration, ttlExtendTime time.Duration) (*TTLHashSet, error) {
 	client, err := redis.Dial("tcp", address)
 	if err != nil {
 		return nil, err
@@ -51,6 +52,7 @@ func NewTTLHashSet(prefix string, address string, ttlExpiryTime time.Duration) (
 		client:        client,
 		prefix:        prefix,
 		ttlExpiryTime: ttlExpiryTime,
+		ttlExtendTime: ttlExtendTime,
 	}, nil
 }
 
@@ -86,6 +88,33 @@ func (t *TTLHashSet) Set(key string, val int) error {
 	t.mutex.Lock()
 	_, err := t.client.Cmd("SETEX", localKey, t.ttlExpiryTime.Seconds(), val).Bool()
 	t.mutex.Unlock()
+
+	if err != nil {
+		t.reconnectIfIOError(err)
+	}
+
+	return err
+}
+
+func (t *TTLHashSet) SetOrExtend(key string, val int) error {
+	localKey := prefixKey(t.prefix, key)
+
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	ttl, err := t.client.Cmd("TTL", localKey).Int()
+	if err != nil || ttl == -2 { // key not present
+		ttl = 0
+	}
+
+	timeout := float64(ttl) + t.ttlExtendTime.Seconds()
+
+	if timeout > t.ttlExpiryTime.Seconds() {
+		timeout = t.ttlExpiryTime.Seconds()
+	}
+
+	// Use pipelining to set the key and set expiry in one go.
+	_, err = t.client.Cmd("SETEX", localKey, timeout, val).Bool()
 
 	if err != nil {
 		t.reconnectIfIOError(err)

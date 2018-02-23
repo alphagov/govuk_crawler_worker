@@ -67,7 +67,7 @@ var _ = Describe("Workflow", func() {
 				Host:   "www.gov.uk",
 			}
 
-			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour)
+			ttlHashSet, ttlHashSetErr = NewTTLHashSet(prefix, redisAddr, time.Hour, time.Minute)
 			Expect(ttlHashSetErr).To(BeNil())
 
 			queueManager, queueManagerErr = NewManager(
