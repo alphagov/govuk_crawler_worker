@@ -1,11 +1,12 @@
 #!/usr/bin/env groovy
 
+library("govuk")
+
 REPOSITORY = 'govuk_crawler_worker'
 
 node {
   GO_SRC = "${WORKSPACE}/src/github.com/alphagov/govuk_crawler_worker"
 
-  def govuk = load '/var/lib/jenkins/groovy_scripts/govuk_jenkinslib.groovy'
 
   try {
     stage("Checkout") {
