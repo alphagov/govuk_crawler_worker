@@ -221,13 +221,13 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 	return extractChannel
 }
 
-func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-chan *CrawlerMessageItem) {
-	publishChannel := make(chan string, 100)
+func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan *url.URL, <-chan *CrawlerMessageItem) {
+	publishChannel := make(chan *url.URL, 100)
 	acknowledgeChannel := make(chan *CrawlerMessageItem, 1)
 
 	extractLoop := func(
 		extract <-chan *CrawlerMessageItem,
-		publish chan<- string,
+		publish chan<- *url.URL,
 		acknowledge chan<- *CrawlerMessageItem,
 	) {
 		for item := range extract {
@@ -243,7 +243,7 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 			log.Debugln("Extracted URLs:", len(urls))
 
 			for _, u := range urls {
-				publish <- u.String()
+				publish <- u
 			}
 
 			acknowledge <- item
@@ -257,26 +257,34 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan string, <-ch
 	return publishChannel, acknowledgeChannel
 }
 
-func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manager, publish <-chan string) {
+func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manager, publish <-chan *url.URL) {
 	for url := range publish {
+
+		u := url.String()
+
+		if(url.RawQuery != "") {
+			log.Debugln("Skipping URL as it has query params:", u)
+			continue
+		}
+
 		start := time.Now()
-		queueStatus, err := ttlHashSet.Get(url)
+		queueStatus, err := ttlHashSet.Get(u)
 
 		if err != nil {
-			log.Errorln("Couldn't check existence of URL:", url, err)
+			log.Errorln("Couldn't check existence of URL:", u, err)
 			continue
 		}
 
 		if queueStatus == Enqueued {
-			log.Debugln("URL is already in the queue:", url)
+			log.Debugln("URL is already in the queue:", u)
 		} else if queueStatus > Enqueued {
-			log.Debugln("URL is already in the queue (reporting 5XX's):", url)
+			log.Debugln("URL is already in the queue (reporting 5XX's):", u)
 		} else {
-			ttlHashSet.Set(url, Enqueued)
+			ttlHashSet.Set(u, Enqueued)
 
-			err = queueManager.Publish("#", "text/plain", url)
+			err = queueManager.Publish("#", "text/plain", u)
 			if err != nil {
-				log.Fatalln("Delivery failed:", url, err)
+				log.Fatalln("Delivery failed:", u, err)
 			}
 		}
 

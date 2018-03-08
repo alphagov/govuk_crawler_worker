@@ -122,7 +122,7 @@ func main() {
 	dontQuit := make(chan struct{})
 
 	var acknowledgeChan, crawlChan, persistChan, parseChan <-chan *CrawlerMessageItem
-	publishChan := make(<-chan string, 100)
+	publishChan := make(<-chan *url.URL, 100)
 
 	var crawlerThreadsInt int
 	crawlerThreadsInt, err = strconv.Atoi(crawlerThreads)

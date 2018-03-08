@@ -361,7 +361,8 @@ var _ = Describe("Workflow", func() {
 
 				outbound <- item
 
-				Expect(<-publish).To(Equal("https://www.gov.uk/some-url"))
+				url, _ := url.Parse("https://www.gov.uk/some-url")
+				Expect(<-publish).To(Equal(url))
 				Expect(<-acknowledge).To(Equal(item))
 
 				close(outbound)
@@ -369,17 +370,14 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("PublishURLs", func() {
-			It("doesn't publish URLs that are already enqueued", func() {
-				u := "https://www.gov.uk/government/organisations"
+			It("doesn't publish URLs that have query params", func() {
+				u := "https://www.gov.uk/government/organisations?some=params"
 
 				deliveries, err := queueManager.Consume()
 				Expect(err).To(BeNil())
 				Expect(len(deliveries)).To(Equal(0))
 
-				err = ttlHashSet.Set(u, Enqueued)
-				Expect(err).To(BeNil())
-
-				publish := make(chan string, 1)
+				publish := make(chan *url.URL, 1)
 				outbound := make(chan []byte, 1)
 
 				go func() {
@@ -390,7 +388,41 @@ var _ = Describe("Workflow", func() {
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
 
-				publish <- u
+				url, _ := url.Parse(u)
+				publish <- url
+				Eventually(publish).Should(HaveLen(1))
+
+				Eventually(publish).Should(HaveLen(0))
+				Eventually(outbound).Should(HaveLen(0))
+
+				// Close the channel to stop the goroutine for PublishURLs.
+				close(publish)
+				close(outbound)
+			})
+
+			It("doesn't publish URLs that are already enqueued", func() {
+				u := "https://www.gov.uk/government/organisations"
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				err = ttlHashSet.Set(u, Enqueued)
+				Expect(err).To(BeNil())
+
+				publish := make(chan *url.URL, 1)
+				outbound := make(chan []byte, 1)
+
+				go func() {
+					for item := range deliveries {
+						outbound <- item.Body
+						item.Ack(false)
+					}
+				}()
+				go PublishURLs(ttlHashSet, queueManager, publish)
+
+				url, _ := url.Parse(u)
+				publish <- url
 				Eventually(publish).Should(HaveLen(1))
 
 				Eventually(publish).Should(HaveLen(0))
@@ -411,7 +443,7 @@ var _ = Describe("Workflow", func() {
 				err = ttlHashSet.Incr(u)
 				Expect(err).To(BeNil())
 
-				publish := make(chan string, 1)
+				publish := make(chan *url.URL, 1)
 				outbound := make(chan []byte, 1)
 
 				go func() {
@@ -422,7 +454,8 @@ var _ = Describe("Workflow", func() {
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
 
-				publish <- u
+				url, _ := url.Parse(u)
+				publish <- url
 				Eventually(publish).Should(HaveLen(1))
 
 				Eventually(publish).Should(HaveLen(0))
@@ -440,7 +473,7 @@ var _ = Describe("Workflow", func() {
 				Expect(err).To(BeNil())
 				Expect(len(deliveries)).To(Equal(0))
 
-				publish := make(chan string, 1)
+				publish := make(chan *url.URL, 1)
 				outbound := make(chan []byte, 1)
 
 				go func() {
@@ -451,7 +484,8 @@ var _ = Describe("Workflow", func() {
 				}()
 				go PublishURLs(ttlHashSet, queueManager, publish)
 
-				publish <- u
+				url, _ := url.Parse(u)
+				publish <- url
 
 				Expect(<-outbound).To(Equal([]byte(u)))
 				Expect(len(publish)).To(Equal(0))
