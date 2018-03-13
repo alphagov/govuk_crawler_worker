@@ -311,6 +311,36 @@ var _ = Describe("Workflow", func() {
 				close(outbound)
 			})
 
+			It("does not write item to disk if it has query params", func() {
+				u := "https://www.gov.uk/extract-some-urls-with-params?page=1"
+				deliveryItem := &amqp.Delivery{Body: []byte(u)}
+				item := NewCrawlerMessageItem(*deliveryItem, rootURLs, []string{})
+				item.Response = &CrawlerResponse{
+					Body:        []byte(`<a href="https://www.gov.uk/some-url">a link</a>`),
+					ContentType: HTML,
+					URL:         testURL,
+				}
+
+				outbound := make(chan *CrawlerMessageItem, 1)
+				extract := WriteItemToDisk(mirrorRoot, outbound)
+
+				Expect(len(extract)).To(Equal(0))
+
+				outbound <- item
+
+				Expect(<-extract).To(Equal(item))
+
+				relativeFilePath, _ := item.RelativeFilePath()
+				filePath := path.Join(mirrorRoot, relativeFilePath)
+
+				Expect(len(extract)).To(Equal(0))
+
+				_, err := os.Stat(filePath);
+				Expect(os.IsNotExist(err)).To(Equal(true))
+
+				close(outbound)
+			})
+
 			It("doesn't forward the item for extraction if it's not HTML", func() {
 				body := []byte(`{"a": 2}`)
 				deliveries, err := queueManager.Consume()
@@ -370,7 +400,7 @@ var _ = Describe("Workflow", func() {
 		})
 
 		Describe("PublishURLs", func() {
-			It("doesn't publish URLs that have query params", func() {
+			It("doesn't publish URLs that have (non paging related) query params", func() {
 				u := "https://www.gov.uk/government/organisations?some=params"
 
 				deliveries, err := queueManager.Consume()
@@ -396,6 +426,44 @@ var _ = Describe("Workflow", func() {
 				Eventually(outbound).Should(HaveLen(0))
 
 				// Close the channel to stop the goroutine for PublishURLs.
+				close(publish)
+				close(outbound)
+			})
+
+			It("does publish URLs that have paging only query params", func() {
+				u := "https://www.gov.uk/government/foo?page=1"
+
+				deliveries, err := queueManager.Consume()
+				Expect(err).To(BeNil())
+				Expect(len(deliveries)).To(Equal(0))
+
+				publish := make(chan *url.URL, 1)
+				outbound := make(chan []byte, 1)
+
+				go func() {
+					for item := range deliveries {
+
+						outbound <- item.Body
+						item.Ack(false)
+					}
+				}()
+				go PublishURLs(ttlHashSet, queueManager, publish)
+
+				url, _ := url.Parse(u)
+				publish <- url
+
+				Eventually(publish).Should(HaveLen(1))
+
+				Eventually(publish).Should(HaveLen(0))
+				Eventually(outbound).Should(HaveLen(1))
+
+				Expect(<-outbound).To(Equal([]byte(u)))
+				Expect(len(publish)).To(Equal(0))
+
+				Eventually(func() (int, error) {
+					return ttlHashSet.Get(u)
+				}).Should(Equal(Enqueued))
+
 				close(publish)
 				close(outbound)
 			})
