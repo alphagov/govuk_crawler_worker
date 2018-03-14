@@ -34,6 +34,12 @@ func (c *CrawlerMessageItem) URL() string {
 	return string(c.Body)
 }
 
+func (c *CrawlerMessageItem) hasParams() bool {
+	urlParts, err := url.Parse(c.URL())
+
+	return (err != nil || urlParts.RawQuery != "")
+}
+
 func (c *CrawlerMessageItem) RelativeFilePath() (string, error) {
 	var filePath string
 

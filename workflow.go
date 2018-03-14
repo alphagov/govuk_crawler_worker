@@ -171,31 +171,35 @@ func WriteItemToDisk(basePath string, crawlChannel <-chan *CrawlerMessageItem) <
 			start := time.Now()
 			relativeFilePath, err := item.RelativeFilePath()
 
-			if err != nil {
-				item.Reject(false)
-				log.Errorln("Couldn't retrieve relative file path for item (rejecting):", item.URL(), err)
-				continue
+			if item.hasParams() {
+				log.Debugln("Skipping write to disk as query params exists:", item.URL(), err)
+			} else {
+				if err != nil {
+					item.Reject(false)
+					log.Errorln("Couldn't retrieve relative file path for item (rejecting):", item.URL(), err)
+					continue
+				}
+
+				filePath := filepath.Join(basePath, relativeFilePath)
+				dirPath := filepath.Dir(filePath)
+				err = os.MkdirAll(dirPath, 0755)
+
+				if err != nil {
+					item.Reject(false)
+					log.Errorln("Couldn't create directories for item (rejecting):", filePath, err)
+					continue
+				}
+
+				err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
+
+				if err != nil {
+					item.Reject(false)
+					log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
+					continue
+				}
+
+				log.Debugln("Wrote URL body to disk for:", item.URL())
 			}
-
-			filePath := filepath.Join(basePath, relativeFilePath)
-			dirPath := filepath.Dir(filePath)
-			err = os.MkdirAll(dirPath, 0755)
-
-			if err != nil {
-				item.Reject(false)
-				log.Errorln("Couldn't create directories for item (rejecting):", filePath, err)
-				continue
-			}
-
-			err = ioutil.WriteFile(filePath, item.Response.Body, 0644)
-
-			if err != nil {
-				item.Reject(false)
-				log.Errorln("Couldn't write to disk (rejecting):", filePath, err)
-				continue
-			}
-
-			log.Debugln("Wrote URL body to disk for:", item.URL())
 
 			contentType, err := item.Response.ParseContentType()
 			if err != nil {
@@ -258,13 +262,21 @@ func ExtractURLs(extractChannel <-chan *CrawlerMessageItem) (<-chan *url.URL, <-
 }
 
 func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manager, publish <-chan *url.URL) {
-	for url := range publish {
+	for uu := range publish {
 
-		u := url.String()
+		u := uu.String()
 
-		if(url.RawQuery != "") {
-			log.Debugln("Skipping URL as it has query params:", u)
-			continue
+		if(uu.RawQuery != "") {
+			values, err := url.ParseQuery(uu.RawQuery)
+			if err != nil {
+				log.Debugln("Skipping URL unable to decode query params:", u)
+				continue
+			}
+			values.Del("page") // ignore pagination params. This ensures we process URL from every page of our search pages
+			if values.Encode() != "" {
+				log.Debugln("Skipping URL as it has query params:", u)
+				continue
+			}
 		}
 
 		start := time.Now()
