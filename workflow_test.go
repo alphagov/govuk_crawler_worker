@@ -197,41 +197,6 @@ var _ = Describe("Workflow", func() {
 				close(crawlChan)
 			})
 
-			It("resets a a redirect URL so it can be added back into the queue immediately", func() {
-				body := `<a href="gov.uk">bar</a>`
-				server := testServer(http.StatusMovedPermanently, body)
-
-				ttlHashSet.Set(server.URL, Enqueued)
-
-				deliveries, err := queueManager.Consume()
-				Expect(err).To(BeNil())
-
-				crawlChan := ReadFromQueue(deliveries, rootURLs, ttlHashSet, []string{}, 1)
-				Expect(len(crawlChan)).To(Equal(0))
-
-				maxRetries := 4
-
-				err = queueManager.Publish("#", "text/plain", server.URL)
-				Expect(err).To(BeNil())
-				Eventually(crawlChan).Should(HaveLen(1))
-
-				crawled := CrawlURL(ttlHashSet, crawlChan, crawler, 1, maxRetries)
-				Eventually(crawlChan).Should(HaveLen(0))
-
-				Eventually(func() (int, error) {
-					return ttlHashSet.Get(server.URL)
-				}).Should(Equal(ReadyToEnqueue))
-
-				Eventually(func() (int, error) {
-					queueInfo, err := queueManager.Producer.Channel.QueueInspect(queueManager.QueueName)
-					return queueInfo.Messages, err
-				}).Should(Equal(0))
-				Expect(len(crawled)).To(Equal(0))
-
-				server.Close()
-				close(crawlChan)
-			})
-
 			It("resets a parsed URL so it can be added back into the queue immediately retry it", func() {
 				body := `I am not HTML. No HTML, see?`
 				server := testServer(http.StatusOK, body)
@@ -335,7 +300,7 @@ var _ = Describe("Workflow", func() {
 
 				Expect(len(extract)).To(Equal(0))
 
-				_, err := os.Stat(filePath);
+				_, err := os.Stat(filePath)
 				Expect(os.IsNotExist(err)).To(Equal(true))
 
 				close(outbound)

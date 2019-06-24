@@ -15,7 +15,6 @@ import (
 var (
 	ErrCannotCrawlURL  = errors.New("Cannot crawl URLs that don't live under the provided root URLs")
 	ErrNotFound        = errors.New("404 Not Found")
-	ErrRedirect        = errors.New("HTTP redirect encountered")
 	ErrRetryRequest5XX = errors.New("Retry request: 5XX HTTP Response returned")
 	ErrRetryRequest429 = errors.New("Retry request: 429 HTTP Response returned (back off)")
 
@@ -49,6 +48,10 @@ func NewCrawler(rootURLs []*url.URL, versionNumber string, rateLimitToken string
 }
 
 func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
+	var redirectDestinationURL = ""
+	var redirectBody = ""
+	var body []byte
+
 	if !IsAllowedHost(crawlURL.Host, c.RootURLs) {
 		return nil, ErrCannotCrawlURL
 	}
@@ -86,12 +89,32 @@ func (c *Crawler) Crawl(crawlURL *url.URL) (*CrawlerResponse, error) {
 	case resp.StatusCode == http.StatusNotFound:
 		return nil, ErrNotFound
 	case containsInt(redirectStatusCodes, resp.StatusCode):
-		return nil, ErrRedirect
+		// If we encounter a redirect, create some HTML that does the redirect
+		// and return this as a body. This enables two things:
+		//  1. A file with this HTML will be created which will allow
+		//     redirects to work in a static environment.
+		//  2. The link to the new URL will be picked up and added to the queue
+		//     so it will be visited and the eventual content saved.
+		redirectDestinationURL = resp.Header.Get("Location")
+		redirectBody = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		<meta http-equiv="refresh" content="1; url=` + redirectDestinationURL + `">
+		<title>Redirecting</title>
+		</head>
+		<body>
+		<p>Redirecting you to <a href="` + redirectDestinationURL + `">` + redirectDestinationURL + `</a>.</p>
+		</body>
+		</html>`
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if redirectBody != "" {
+		body = []byte(redirectBody)
+	} else {
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	response := &CrawlerResponse{
