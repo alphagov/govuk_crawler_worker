@@ -116,16 +116,6 @@ func CrawlURL(
 					item.Reject(true)
 
 					log.Warningln("Couldn't crawl (requeueing):", u.String(), err)
-				case http_crawler.ErrRedirect:
-
-					err = ttlHashSet.Set(item.URL(), ReadyToEnqueue)
-					if err != nil {
-						log.Errorln("Couldn't mark item as already crawled:", item.URL(), err)
-					}
-
-					item.Reject(false)
-					// log at INFO because redirect URLs are not a concern
-					log.Debugln("Couldn't crawl (rejecting):", u.String(), err)
 				default:
 					item.Reject(false)
 					log.Warningln("Couldn't crawl (rejecting):", u.String(), err)
@@ -266,7 +256,7 @@ func PublishURLs(ttlHashSet *ttl_hash_set.TTLHashSet, queueManager *queue.Manage
 
 		u := uu.String()
 
-		if(uu.RawQuery != "") {
+		if uu.RawQuery != "" {
 			values, err := url.ParseQuery(uu.RawQuery)
 			if err != nil {
 				log.Debugln("Skipping URL unable to decode query params:", u)

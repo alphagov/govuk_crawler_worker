@@ -110,9 +110,10 @@ var _ = Describe("Crawl", func() {
 			defer ts.Close()
 
 			testURL, _ := url.Parse(ts.URL)
-			_, err := crawler.Crawl(testURL)
+			response, err := crawler.Crawl(testURL)
 
-			Expect(err).To(Equal(errors.New("HTTP redirect encountered")))
+			Expect(err).To(BeNil())
+			Expect(string(response.Body)).Should(MatchRegexp("Redirecting you to <a href=\"/redirect\">/redirect</a>"))
 		})
 
 		It("returns an error when server returns a 404", func() {
