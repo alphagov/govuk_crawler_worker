@@ -174,7 +174,7 @@ func HostOnly(hostport string) (string, error) {
 	host, _, err := net.SplitHostPort(hostport)
 
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "missing port in address") {
+		if strings.Contains(err.Error(), "missing port in address") {
 			return hostport, nil
 		}
 
