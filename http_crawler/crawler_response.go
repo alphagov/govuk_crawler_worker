@@ -14,7 +14,7 @@ const (
 	HTML       = "text/html"
 	ICO        = "image/x-icon"
 	ICS        = "text/calendar"
-	JAVASCRIPT = "application/x-javascript"
+	JAVASCRIPT = "application/javascript"
 	JPEG       = "image/jpeg"
 	JSON       = "application/json"
 	ODP        = "application/vnd.oasis.opendocument.presentation"
