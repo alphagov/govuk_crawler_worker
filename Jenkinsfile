@@ -35,7 +35,7 @@ node {
         archiveArtifacts 'govuk_crawler_worker'
       }
 
-      if (env.BRANCH_NAME == 'master') {
+      if (env.BRANCH_NAME == 'main') {
         stage("Push binary to S3") {
           govuk.uploadArtefactToS3('govuk_crawler_worker', "s3://govuk-integration-artefact/govuk_crawler_worker/release_${env.BUILD_NUMBER}/govuk_crawler_worker")
           echo "Uploaded to S3 with tag: release_${env.BUILD_NUMBER}."
@@ -44,9 +44,9 @@ node {
       }
     }
 
-    if (env.BRANCH_NAME == 'master') {
+    if (env.BRANCH_NAME == 'main') {
       stage("Push release tag") {
-        govuk.pushTag(REPOSITORY, env.BRANCH_NAME, 'release_' + env.BUILD_NUMBER)
+        govuk.pushTag(REPOSITORY, env.BRANCH_NAME, 'release_' + env.BUILD_NUMBER, 'main')
       }
 
       stage("Deploy") {
