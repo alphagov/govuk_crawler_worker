@@ -61,3 +61,8 @@ exchange and binds it to it's own queue for consumption.
 If you provide user credentials for RabbitMQ that aren't on the root
 vhost `/`, you may wish to bind a global exchange yourself for easier
 publishing by other applications.
+
+## Licence
+
+[MIT License](LICENCE)
+
