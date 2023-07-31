@@ -26,7 +26,7 @@ var (
 	crawlerThreads    = util.GetEnvDefault("CRAWLER_THREADS", "4")
 	exchangeName      = util.GetEnvDefault("AMQP_EXCHANGE", "govuk_crawler_exchange")
 	httpPort          = util.GetEnvDefault("HTTP_PORT", "8080")
-	maxCrawlRetries   = util.GetEnvDefault("MAX_CRAWL_RETRIES", "4")
+	maxCrawlRetries   = util.GetEnvDefault("MAX_CRAWL_RETRIES", "1")
 	queueName         = util.GetEnvDefault("AMQP_MESSAGE_QUEUE", "govuk_crawler_queue")
 	redisAddr         = util.GetEnvDefault("REDIS_ADDRESS", "127.0.0.1:6379")
 	redisKeyPrefix    = util.GetEnvDefault("REDIS_KEY_PREFIX", "gcw")
@@ -133,7 +133,7 @@ func main() {
 	var maxCrawlRetriesInt int
 	maxCrawlRetriesInt, err = strconv.Atoi(maxCrawlRetries)
 	if err != nil {
-		maxCrawlRetriesInt = 4
+		maxCrawlRetriesInt = 1
 	}
 
 	crawlChan = ReadFromQueue(deliveries, rootURLs, ttlHashSet, splitPaths(blacklistPaths), crawlerThreadsInt)
